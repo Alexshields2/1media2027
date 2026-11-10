@@ -1,29 +1,22 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import path from "node:path";
 import type { AnthropicToolUseBlock } from "@composio/anthropic";
-import { MODEL, config, requireEnv } from "../config.js";
-import { composio, loadTools } from "./composio.js";
-import { decide, type Autonomy } from "./guardrails.js";
-import { notionMap } from "./notion.js";
-import { newRun, saveRun, type RunRecord, type ToolEvent } from "./runlog.js";
-import type { AgentDefinition, AgentContext } from "../agents/types.js";
+import { eq } from "drizzle-orm";
+import { MODEL, config, requireEnv } from "../config";
+import { db, schema } from "../db";
+import type { ToolEvent, AgentRun } from "../db/schema";
+import { composio, loadComposioTools, composioEnabled } from "./composio";
+import { decide, type Autonomy } from "./guardrails";
+import { osToolDefs, isOsTool, runOsTool, ALL_OS_TOOLS } from "./os-tools";
+import { today } from "./dates";
+import { notify } from "./slack";
+import { houseRules } from "../agents/house-rules";
+import type { AgentDefinition, AgentContext } from "../agents/types";
 
-const here = path.dirname(fileURLToPath(import.meta.url));
-
-function loadPrompt(file: string): string {
-  return readFileSync(path.join(here, "..", file), "utf8");
-}
-
-/** Shared house rules + the agent's own prompt + the Notion map. Kept stable so it caches. */
+/** House rules + the agent's own prompt. Kept stable (no dates) so it caches across runs. */
 function systemPrompt(agent: AgentDefinition, autonomy: Autonomy): string {
-  const house = loadPrompt("agents/house-rules.md");
-  const own = loadPrompt(`agents/${agent.name}/prompt.md`);
   return [
-    house,
-    `# Your role: ${agent.name}\n\n${own}`,
-    `# Where things live\n\n${notionMap()}`,
+    houseRules,
+    `# Your role: ${agent.name}\n\n${agent.prompt}`,
     `# Your autonomy level: ${autonomy}\n\nWrite actions you are not cleared for come back as "PROPOSED" or "BLOCKED" instead of running. That is expected: carry on, and list every proposed action in your final summary so a human can approve it.`,
   ].join("\n\n---\n\n");
 }
@@ -31,108 +24,150 @@ function systemPrompt(agent: AgentDefinition, autonomy: Autonomy): string {
 export interface RunOptions {
   dryRun?: boolean;
   instruction?: string;
+  trigger?: AgentRun["trigger"];
 }
 
-export async function runAgent(agent: AgentDefinition, opts: RunOptions = {}): Promise<RunRecord> {
-  requireEnv("ANTHROPIC_API_KEY");
+export async function runAgent(agent: AgentDefinition, opts: RunOptions = {}): Promise<AgentRun> {
   const autonomy: Autonomy = opts.dryRun ? "L0" : agent.autonomy;
-  const ctx: AgentContext = {
-    today: new Date().toLocaleDateString("en-CA", { timeZone: config.timezone }),
-    instruction: opts.instruction,
-  };
+  const ctx: AgentContext = { today: today(), instruction: opts.instruction };
   const task = agent.task(ctx) + (ctx.instruction ? `\n\nExtra instruction for this run: ${ctx.instruction}` : "");
-  const run = newRun(agent.name, task, !!opts.dryRun);
 
-  const client = new Anthropic();
-  const tools = await loadTools({ toolkits: agent.toolkits, tools: agent.tools });
-  const system = systemPrompt(agent, autonomy);
-  const messages: Anthropic.Beta.BetaMessageParam[] = [{ role: "user", content: task }];
+  const [run] = await db
+    .insert(schema.agentRuns)
+    .values({ agent: agent.name, trigger: opts.trigger ?? "manual", dryRun: !!opts.dryRun, instruction: opts.instruction })
+    .returning();
 
-  for (let turn = 0; turn < agent.maxTurns; turn++) {
-    const res = await client.beta.messages.create({
-      model: MODEL,
-      max_tokens: 16000,
-      system: [{ type: "text", text: system, cache_control: { type: "ephemeral" } }],
-      tools: tools as Anthropic.Beta.BetaToolUnion[],
-      messages,
-      thinking: { type: "adaptive" },
-      output_config: { effort: agent.effort },
-      // If a safety classifier declines, the server retries on a fallback model.
-      betas: ["server-side-fallback-2026-07-01"],
-      fallbacks: "default",
-    });
+  const events: ToolEvent[] = [];
+  const usage = { input: 0, output: 0, cacheRead: 0 };
+  let summary: string | undefined;
+  let status: AgentRun["status"] = "completed";
 
-    run.usage.inputTokens += res.usage.input_tokens;
-    run.usage.outputTokens += res.usage.output_tokens;
-    run.usage.cacheReadTokens += res.usage.cache_read_input_tokens ?? 0;
-    run.stopReason = res.stop_reason ?? undefined;
+  try {
+    requireEnv("ANTHROPIC_API_KEY");
+    const client = new Anthropic();
+    const composioTools = await loadComposioTools({ toolkits: agent.toolkits, tools: agent.tools });
+    const tools = [...osToolDefs(agent.osTools ?? ALL_OS_TOOLS), ...composioTools] as Anthropic.Beta.BetaToolUnion[];
+    const system = systemPrompt(agent, autonomy);
+    const note = composioEnabled() ? "" : "\n\n(Note: external apps such as Gmail, Meta Ads, HighLevel and Stripe are not connected yet. Work with the 1Media OS database only, and say what you could not check.)";
+    const messages: Anthropic.Beta.BetaMessageParam[] = [{ role: "user", content: task + note }];
 
-    if (res.stop_reason === "refusal") {
-      run.summary = "Run stopped: the model declined this request.";
-      break;
+    for (let turn = 0; turn < agent.maxTurns; turn++) {
+      const res = await client.beta.messages.create({
+        model: MODEL,
+        max_tokens: 16000,
+        system: [{ type: "text", text: system, cache_control: { type: "ephemeral" } }],
+        tools,
+        messages,
+        thinking: { type: "adaptive" },
+        output_config: { effort: agent.effort },
+        // If a safety classifier declines, the server retries on a fallback model.
+        betas: ["server-side-fallback-2026-07-01"],
+        fallbacks: "default",
+      });
+
+      usage.input += res.usage.input_tokens;
+      usage.output += res.usage.output_tokens;
+      usage.cacheRead += res.usage.cache_read_input_tokens ?? 0;
+
+      if (res.stop_reason === "refusal") {
+        summary = "Run stopped: the model declined this request.";
+        status = "stopped";
+        break;
+      }
+
+      messages.push({ role: "assistant", content: res.content });
+      if (res.stop_reason === "pause_turn") continue;
+
+      if (res.stop_reason !== "tool_use") {
+        summary = res.content
+          .filter((b): b is Anthropic.Beta.BetaTextBlock => b.type === "text")
+          .map((b) => b.text)
+          .join("\n")
+          .trim();
+        if (res.stop_reason === "max_tokens") status = "stopped";
+        break;
+      }
+
+      const calls = res.content.filter((b): b is Anthropic.Beta.BetaToolUseBlock => b.type === "tool_use");
+      // Run the calls in parallel, then return every result in one user message.
+      const results = await Promise.all(calls.map((c) => handleCall(c, agent, autonomy, run.id, events)));
+      messages.push({ role: "user", content: results });
     }
 
-    messages.push({ role: "assistant", content: res.content });
-
-    if (res.stop_reason === "pause_turn") continue;
-    if (res.stop_reason !== "tool_use") {
-      run.summary = res.content
-        .filter((b): b is Anthropic.Beta.BetaTextBlock => b.type === "text")
-        .map((b) => b.text)
-        .join("\n")
-        .trim();
-      break;
+    if (summary === undefined) {
+      summary = `Run stopped after ${agent.maxTurns} turns without finishing.`;
+      status = "stopped";
     }
+  } catch (err) {
+    status = "error";
+    summary = `Error: ${err instanceof Error ? err.message : String(err)}`;
+  }
 
-    const calls = res.content.filter(
-      (b): b is Anthropic.Beta.BetaToolUseBlock => b.type === "tool_use",
+  const count = (o: ToolEvent["outcome"]) => events.filter((e) => e.outcome === o).length;
+  const [saved] = await db
+    .update(schema.agentRuns)
+    .set({
+      status,
+      summary,
+      events,
+      toolCalls: events.length,
+      proposed: count("proposed"),
+      blocked: count("blocked"),
+      errors: count("error"),
+      inputTokens: usage.input,
+      outputTokens: usage.output,
+      cacheReadTokens: usage.cacheRead,
+      finishedAt: new Date(),
+    })
+    .where(eq(schema.agentRuns.id, run.id))
+    .returning();
+
+  const proposed = count("proposed");
+  if (proposed || status === "error") {
+    await notify(
+      `*${agent.name}* ${status === "error" ? "failed" : "finished"}${proposed ? ` – ${proposed} action(s) waiting for approval` : ""}.\n${(summary ?? "").slice(0, 1500)}`,
     );
-    // Run the calls in parallel, then return every result in a single user message.
-    const results = await Promise.all(calls.map((call) => handleCall(call, agent, autonomy, run)));
-    messages.push({ role: "user", content: results });
   }
-
-  if (run.summary === undefined) {
-    run.summary = `Run stopped after ${agent.maxTurns} turns without finishing.`;
-  }
-  run.finishedAt = new Date().toISOString();
-  saveRun(run);
-  return run;
+  return saved;
 }
 
 async function handleCall(
   call: Anthropic.Beta.BetaToolUseBlock,
   agent: AgentDefinition,
   autonomy: Autonomy,
-  run: RunRecord,
+  runId: number,
+  events: ToolEvent[],
 ): Promise<Anthropic.Beta.BetaToolResultBlockParam> {
+  const input = (call.input ?? {}) as Record<string, unknown>;
   const d = decide(call.name, autonomy, agent.allow);
-  const event: ToolEvent = { tool: call.name, input: call.input, outcome: "ran" };
-  run.events.push(event);
+  const event: ToolEvent = { tool: call.name, input, outcome: "ran" };
+  events.push(event);
 
   if (d.action === "block") {
     event.outcome = "blocked";
     event.note = d.reason;
     return { type: "tool_result", tool_use_id: call.id, is_error: true, content: `BLOCKED: ${d.reason} Do not retry this action.` };
   }
+
   if (d.action === "propose") {
     event.outcome = "proposed";
     event.note = d.reason;
+    await db.insert(schema.approvals).values({ runId, agent: agent.name, tool: call.name, input, reason: d.reason });
     return {
       type: "tool_result",
       tool_use_id: call.id,
-      content: `PROPOSED (not executed): ${d.reason} It has been queued for human approval. Continue as if it will be done, and list it in your summary.`,
+      content: `PROPOSED (not executed): ${d.reason} It is queued in the 1Media OS approvals page. Continue as if it will be done, and list it in your summary.`,
     };
   }
 
   try {
-    const toolUse: AnthropicToolUseBlock = {
-      type: "tool_use",
-      id: call.id,
-      name: call.name,
-      input: (call.input ?? {}) as Record<string, unknown>,
-    };
-    const out = await composio().provider.executeToolCall(config.composioUserId, toolUse);
+    let out: string;
+    if (isOsTool(call.name)) {
+      out = await runOsTool(call.name, input);
+    } else {
+      const toolUse: AnthropicToolUseBlock = { type: "tool_use", id: call.id, name: call.name, input };
+      out = await composio().provider.executeToolCall(config.composioUserId, toolUse);
+    }
     event.result = out.length > 2000 ? out.slice(0, 2000) + "…[truncated in log only]" : out;
     return { type: "tool_result", tool_use_id: call.id, content: out };
   } catch (err) {

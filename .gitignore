@@ -1,4 +1,7 @@
 node_modules/
+.next/
+next-env.d.ts
+*.tsbuildinfo
 .env
 .env.*
 !.env.example
@@ -6,3 +9,4 @@ runs/
 dist/
 *.log
 .DS_Store
+.vercel

@@ -1,12 +1,15 @@
-import type { AgentDefinition } from "../types.js";
+import type { AgentDefinition } from "../types";
+import { prompt } from "./prompt";
 
 export const jarvis: AgentDefinition = {
   name: "jarvis",
-  description: "Ask anything about the agency: clients, money, tasks, performance. Read-only for now.",
+  title: "Ask Jarvis",
+  description: "Ask anything about the agency: money, clients, tasks, performance. Read-only.",
+  prompt,
   autonomy: "L0",
-  toolkits: ["notion", "metaads", "highlevel", "stripe", "gmail", "googlecalendar"],
+  toolkits: ["metaads", "highlevel", "stripe", "gmail", "googlecalendar"],
+  needsInstruction: true,
   effort: "medium",
   maxTurns: 30,
-  // On demand: npm run agent -- jarvis "What's outstanding this month?"
-  task: ({ today }) => `Today is ${today}. Answer the question in the extra instruction below.`,
+  task: ({ today }) => `Today is ${today}. Answer the question below.`,
 };

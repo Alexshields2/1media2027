@@ -1,6 +1,6 @@
 # 1Media OS 2027: AI-Native Agency Blueprint
 
-Status: draft v0.1 (10 Nov 2026)
+Status: v0.2 (10 Nov 2026). Built: see README.md. The OS now runs as its own web app on Vercel with its own Postgres database; Notion is no longer the source of truth (a read-only import script brings existing data across).
 Source: mapped from Notion "1Media Operating System 2.0" (SOPs, databases, prompts)
 
 ---

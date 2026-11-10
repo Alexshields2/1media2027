@@ -1,12 +1,16 @@
-import type { AgentDefinition } from "../types.js";
+import type { AgentDefinition } from "../types";
+import { prompt } from "./prompt";
 
 export const onboarding: AgentDefinition = {
   name: "onboarding",
-  description: "Runs the Signed-to-Scaling SOP set-up for a new client: Notion portal, tasks, Drive, tracker sheet, payment rows.",
+  title: "Onboarding",
+  description: "Creates the full set-up plan for a new client from the Signed-to-Scaling SOP: tasks, docs and the welcome email.",
+  prompt,
   autonomy: "L2",
-  toolkits: ["notion", "googledrive", "googlesheets", "googledocs", "highlevel", "gmail"],
+  toolkits: ["googledrive", "googlesheets", "googledocs", "gmail"],
+  needsInstruction: true,
   effort: "high",
   maxTurns: 60,
-  // Run on demand: npm run agent -- onboarding "New client: Acme Roofing, €1,500 + VAT, starts 1 Dec, contact Mark mark@acme.ie"
-  task: ({ today }) => `Today is ${today}. Onboard the new client described in the extra instruction below, following the onboarding SOP. If key details are missing (business name, retainer, start date, contact), stop and list what you need.`,
+  task: ({ today }) =>
+    `Today is ${today}. Onboard the client named in the instruction below. If you can't find them in the client list, stop and say so.`,
 };

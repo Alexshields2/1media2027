@@ -1,24 +1,17 @@
-import { config } from "../src/config.js";
-import { composio, TOOLKITS } from "../src/lib/composio.js";
+import { config } from "../src/config";
+import { composio, TOOLKITS } from "../src/lib/composio";
 
-// Connect 1Media's accounts to Composio, once.
-//   npm run connect            -> show what's connected and print a login link for each missing toolkit
-//   npm run connect -- gmail   -> print a login link for one toolkit
-//
-// Open each link, log in with the 1Media account, done. Agents then use that connection.
+// Connect 1Media's accounts (Gmail, Meta, GHL, Stripe…) to Composio, once.
+//   npm run connect            -> shows what's connected, prints a login link for the rest
+//   npm run connect -- gmail   -> a login link for one app
 
 async function main() {
   const c = composio();
   const userId = config.composioUserId;
   const only = process.argv[2];
   const wanted = only ? [only] : Object.values(TOOLKITS);
-
   const existing = await c.connectedAccounts.list({ userIds: [userId] });
-  const connected = new Set(
-    existing.items
-      .filter((a) => a.status === "ACTIVE")
-      .map((a) => a.toolkit.slug.toLowerCase()),
-  );
+  const connected = new Set(existing.items.filter((a) => a.status === "ACTIVE").map((a) => a.toolkit.slug.toLowerCase()));
 
   console.log(`Composio user: ${userId}\n`);
   for (const slug of wanted) {
@@ -33,7 +26,7 @@ async function main() {
       console.log(`  ✗ ${slug}: ${err instanceof Error ? err.message : err}`);
     }
   }
-  console.log("\nOpen each link and log in. Run this again to check everything shows ✓.");
+  console.log("\nOpen each link and log in with the 1Media account. Run again to check everything shows ✓.");
 }
 
 main().catch((err) => {

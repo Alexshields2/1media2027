@@ -1,91 +1,131 @@
-# 1Media OS 2027
+# 1Media OS
 
-The AI layer for 1Media's agency operations. Notion stays the source of truth. [Composio](https://composio.dev) connects the agents to Gmail, Calendar, Drive, Notion, Meta Ads, HighLevel, Stripe and Slack. Claude does the work.
+The operating system for 1Media: clients, cash, delivery and the AI agents that run the agency, in one web app. It deploys on Vercel.
 
-The plan, the agents and the roadmap are in **[BLUEPRINT.md](BLUEPRINT.md)**.
+## What's in it
 
-## Structure
-
-```
-src/
-  cli.ts                 npm run agent -- <agent>
-  config.ts              env + model
-  lib/
-    runner.ts            the agent loop: Claude ↔ Composio tools, with guardrails
-    guardrails.ts        autonomy levels L0–L3 and hard blocks
-    composio.ts          Composio client + toolkit list
-    notion.ts            IDs of every OS database in Notion
-    runlog.ts            audit trail of every run (runs/)
-  agents/
-    house-rules.md       rules every agent follows
-    registry.ts
-    <agent>/index.ts     tools, autonomy, schedule, task
-    <agent>/prompt.md    the agent's playbook (from the Notion SOPs)
-scripts/connect.ts       connect 1Media's accounts to Composio
-.github/workflows/       scheduled runs (off until switched on)
-```
+| Page | What it does |
+|---|---|
+| **Dashboard** | MRR, collected and outstanding this month, overdue payments, red/yellow clients, tasks due, approvals waiting, recent agent runs |
+| **Clients** | Every client with retainer, VAT, billing method, Meta ad accounts, GHL location, Stripe customer, CPL target and report rules |
+| **Payments** | One row per client per month, generated from the retainer. Record payments in one click; Stripe payments are recorded automatically |
+| **Tasks** | Board (to do / in progress / review / done), filtered by client. Agents add tasks too |
+| **Client health** | Weekly traffic light per client, with a 6-week history |
+| **Reports** | Weekly WhatsApp reports and month-end reports written by the agents: edit, copy, mark sent |
+| **Approvals** | Anything an agent wants to send, charge or change outside the OS waits here. Approve runs it; reject drops it |
+| **Agents** | Run any agent now (dry run by default) and read every run's summary and tool calls |
 
 ## Agents
 
-| Agent | Autonomy | When | Does |
-|---|---|---|---|
-| `finance` | L2 | Weekdays 08:00 | Reconciles Stripe into Payment Collection, flags overdue, drafts chasers, Friday cash summary |
-| `weekly-report` | L1 | Mon 07:00 | Every client's WhatsApp report from Meta Ads, leads and Notion tasks |
-| `month-end-report` | L2 | 1st, 09:00 | Monthly executive report per client from the weekly log |
-| `client-health` | L2 | Weekdays 08:30 | Traffic light: CPL against target, volume, fatigue, leads untouched in GHL |
-| `inbox` | L2 | Every 30 min | Labels, drafts replies, creates tasks, files receipts |
-| `meetings` | L2 | Mon/Wed/Fri 07:00 | Call-prep briefs (every lead by name); meeting notes into tasks |
-| `onboarding` | L2 | On demand | Signed-to-Scaling SOP set-up for a new client |
-| `sales` | L1 | Weekdays 09:00 | CRM follow-ups and discovery-call prep |
-| `jarvis` | L0 | On demand | Ask anything about the agency |
+| Agent | When | Does |
+|---|---|---|
+| Finance | Weekdays 08:00 | Matches Stripe payments to retainers, flags overdue clients, drafts chasers, sends a Friday cash summary |
+| Weekly reports | Mondays 07:00 | Every client's WhatsApp report from Meta Ads, leads and tasks |
+| Month-end reports | 1st, 09:00 | One executive report per client from the month's data |
+| Client health | Weekdays 08:30 | CPL against target, lead volume, creative fatigue, leads left untouched in GHL |
+| Inbox | On demand | Sorts Gmail by client, drafts replies, creates tasks |
+| Call prep | On demand | A brief before each client call, with every lead by name |
+| Onboarding | On demand | The Signed-to-Scaling set-up plan for a new client |
+| Sales | On demand | Prospect follow-ups and discovery-call prep |
+| Ask Jarvis | On demand | Answers any question about the agency. Read-only |
 
-**Autonomy levels:**
-- **L0**: read-only.
-- **L1**: every write is proposed for approval.
-- **L2**: internal writes (Notion, GHL, Drive) run; anything that reaches a client or moves money is proposed.
-- **L3**: everything runs.
+On the 1st of each month a billing job (no AI) also creates that month's payment rows.
 
-**Always blocked, at every level:**
-- Deleting anything
-- Any change in Ads Manager
-- Stripe refunds and payouts
+**Safety:**
+- Every agent has a level: read-only, asks before any change, or updates the OS itself and asks before anything external.
+- Sending an email or message, creating a Stripe invoice and posting to Slack always need your approval.
+- Some things are blocked even if someone approves them: deleting anything, changing Ads Manager, and Stripe refunds or payouts.
 
-**Sending an email always needs approval.** Agents only create Gmail drafts.
+Agents use Claude (Anthropic API). They reach Gmail, Calendar, Drive, Meta Ads, GoHighLevel, Stripe and Slack through Composio. Without Composio they still run on the OS database alone.
 
-## Setup
+## Deploy to Vercel
+
+1. **Import the repo:** vercel.com → Add New → Project → import `1media2027`. The framework (Next.js) is detected automatically.
+2. **Add a database:** in the project, Storage → Create → Neon (Postgres). This sets `DATABASE_URL`.
+3. **Add environment variables** (Settings → Environment Variables). See `.env.example` for the full list:
+   - `ADMIN_PASSWORD`: the dashboard login.
+   - `AUTH_SECRET`: any long random string.
+   - `CRON_SECRET`: any long random string.
+   - `ANTHROPIC_API_KEY`
+   - `COMPOSIO_API_KEY`, and optionally `COMPOSIO_USER_ID`.
+   - Optional: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` and `SLACK_WEBHOOK_URL`.
+4. **Create the tables:** run this once from your computer, with `DATABASE_URL` set to the Neon URL:
+   ```bash
+   npm install
+   ```
+   ```bash
+   npm run db:migrate
+   ```
+5. **Redeploy.** The cron jobs in `vercel.json` start running automatically.
+6. **Stripe:** Developers → Webhooks → add the endpoint `https://<your-app>.vercel.app/api/webhooks/stripe` with the event `invoice.paid`, and copy its signing secret into `STRIPE_WEBHOOK_SECRET`.
+7. **Connect your apps:** run `npm run connect`, then open each login link and sign in with the 1Media accounts.
+
+**Notes:**
+- Cron times are UTC, so jobs run an hour later in Irish summer time.
+- On Vercel's Hobby plan, crons run at most once a day and functions stop at 300 seconds. Pro is recommended for the weekly report run.
+- To pause every scheduled agent, set `AGENTS_PAUSED=true`.
+
+## Bring your data across from Notion (read-only)
+
+```bash
+NOTION_TOKEN=secret_xxx npm run import:notion
+```
+
+This imports clients and payment history from the old Notion OS and writes nothing to Notion. Set up the token like this:
+1. Create an internal integration at notion.so/profile/integrations.
+2. Share "Client Portals" and "Payment Collection" with it.
+
+After importing, fill in each client's Meta ad account IDs, GHL location, CPL target and report rules in the app.
+
+## Run locally
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env` and set at least `DATABASE_URL`, `ADMIN_PASSWORD` and `AUTH_SECRET`. Then:
 
 ```bash
 npm install
 ```
 
 ```bash
-cp .env.example .env
+npm run db:migrate
 ```
 
-Then put your `ANTHROPIC_API_KEY` and `COMPOSIO_API_KEY` in `.env`.
-
 ```bash
-npm run connect
+npm run seed:demo
 ```
 
-That prints a login link for each app. Open each one and log in with the 1Media account.
+```bash
+npm run dev
+```
 
-## Run
+`seed:demo` adds made-up demo clients to an empty database. `npm run dev` serves the app on http://localhost:3000.
+
+Other commands:
 
 ```bash
-npm run agent -- list
+npm test
 ```
 
 ```bash
 npm run agent -- finance --dry-run
 ```
 
-```bash
-npm run agent -- jarvis "What's outstanding this month?"
-```
+## Code map
 
-```bash
-npm run agent -- onboarding "New client: Acme Roofing, €1,500 + VAT, starts 1 Dec, contact Mark mark@acme.ie"
 ```
-
-`--dry-run` forces read-only, so start every agent there. Each run prints a summary and the actions waiting for approval, and saves a full log to `runs/`.
+app/                    pages, server actions, API routes (cron, Stripe webhook)
+proxy.ts                login gate
+src/db/                 schema (Drizzle) and connection
+src/lib/runner.ts       the agent loop: Claude + OS tools + Composio tools, with guardrails
+src/lib/guardrails.ts   what each agent may do on its own
+src/lib/os-tools.ts     tools that let agents read and write the OS database
+src/lib/approvals.ts    runs approved actions
+src/lib/billing.ts      VAT, monthly rows, payment state, totals
+src/agents/             one folder per agent: settings and playbook
+drizzle/                database migrations
+scripts/                demo seed, Notion import, Composio connect
+tests/                  unit tests
+```

@@ -3,7 +3,7 @@
 // Autonomy ladder (from BLUEPRINT.md):
 //   L0  read-only: any write is blocked
 //   L1  drafts: writes are proposed for human approval, not executed
-//   L2  internal: writes to our own systems (Notion, GHL, Drive) run; anything that
+//   L2  internal: writes to our own systems (1Media OS database, GHL, Drive) run; anything that
 //       reaches a client or moves money is proposed
 //   L3  external: everything runs, except the hard blocks below
 
@@ -29,7 +29,7 @@ const HARD_BLOCKS: { pattern: RegExp; reason: string }[] = [
 ];
 
 /** Toolkits that are our own back office. Writes here are "internal". */
-const INTERNAL_TOOLKITS = ["NOTION", "GOOGLEDRIVE", "GOOGLESHEETS", "GOOGLEDOCS", "HIGHLEVEL"];
+const INTERNAL_TOOLKITS = ["OS", "GOOGLEDRIVE", "GOOGLESHEETS", "GOOGLEDOCS", "HIGHLEVEL"];
 
 /** Write actions that only prepare something, never send it. Safe at L1. */
 const DRAFT_ONLY = [/^GMAIL_CREATE_EMAIL_DRAFT/, /^GMAIL_.*DRAFT/, /^GMAIL_ADD_LABEL/, /^GMAIL_.*LABEL/];
