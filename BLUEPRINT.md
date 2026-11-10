@@ -7,7 +7,7 @@ Source: mapped from Notion "1Media Operating System 2.0" (SOPs, databases, promp
 
 ## 1. Where we are today (OS 2.0)
 
-**Business:** revenue infrastructure for Irish home-improvement companies. Paid Meta lead-gen, GoHighLevel CRM builds, websites, reporting. About €18.6k MRR ex VAT across 14 clients (15 retainer lines), plus one AI product line already sold ("AI" retainer).
+**Business:** revenue infrastructure for Irish home-improvement companies. Paid Meta lead-gen, GoHighLevel CRM builds, websites, reporting. A portfolio of retainer clients, plus an AI product line already sold ("AI" retainer). Current figures live in Notion, not here.
 
 **What runs on Notion now:**
 
@@ -167,7 +167,7 @@ Each agent is a folder in this repo with: a system prompt (lifted from your exis
 - **Level:** L1.
 
 ### Jarvis (orchestrator)
-The one interface (Slack DM or Claude). It answers questions like "what's outstanding?", "how's Spraywise this week?", and "onboard X". It routes the work to the agents above and holds the approval queue. Your SOPs already say "Jarvis context", so this formalises that.
+The one interface (Slack DM or Claude). It answers questions like "what's outstanding?", "how's <client> this week?", and "onboard X". It routes the work to the agents above and holds the approval queue. Your SOPs already say "Jarvis context", so this formalises that.
 
 ---
 

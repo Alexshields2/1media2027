@@ -1,0 +1,65 @@
+name: agents
+
+# Scheduled agent runs. Nothing runs until you set the repository variable
+# AGENTS_ENABLED=true (Settings -> Secrets and variables -> Actions -> Variables)
+# and add the secrets ANTHROPIC_API_KEY and COMPOSIO_API_KEY.
+#
+# Cron is UTC. Dublin is UTC+0 in winter and UTC+1 in summer, so summer runs land an hour later.
+
+on:
+  schedule:
+    - cron: "0 8 * * 1-5"   # finance
+    - cron: "30 8 * * 1-5"  # client-health
+    - cron: "0 7 * * 1"     # weekly-report
+    - cron: "0 9 1 * *"     # month-end-report
+  workflow_dispatch:
+    inputs:
+      agent:
+        description: "Agent to run (npm run agent -- list)"
+        required: true
+      dry_run:
+        description: "Read-only dry run"
+        type: boolean
+        default: true
+      instruction:
+        description: "Optional extra instruction"
+        required: false
+
+jobs:
+  run:
+    if: vars.AGENTS_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Pick agent
+        id: pick
+        run: |
+          case "${{ github.event.schedule }}" in
+            "0 8 * * 1-5")  echo "agent=finance" >> "$GITHUB_OUTPUT" ;;
+            "30 8 * * 1-5") echo "agent=client-health" >> "$GITHUB_OUTPUT" ;;
+            "0 7 * * 1")    echo "agent=weekly-report" >> "$GITHUB_OUTPUT" ;;
+            "0 9 1 * *")    echo "agent=month-end-report" >> "$GITHUB_OUTPUT" ;;
+            *)              echo "agent=${{ inputs.agent }}" >> "$GITHUB_OUTPUT" ;;
+          esac
+      - name: Run agent
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          COMPOSIO_API_KEY: ${{ secrets.COMPOSIO_API_KEY }}
+          COMPOSIO_USER_ID: ${{ vars.COMPOSIO_USER_ID || '1media-ops' }}
+          AGENT: ${{ steps.pick.outputs.agent }}
+          DRY: ${{ inputs.dry_run && '--dry-run' || '' }}
+          INSTRUCTION: ${{ inputs.instruction }}
+        run: npm run agent -- "$AGENT" $DRY "$INSTRUCTION"
+      - name: Keep run log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: run-${{ steps.pick.outputs.agent }}-${{ github.run_id }}
+          path: runs/
+          retention-days: 30
