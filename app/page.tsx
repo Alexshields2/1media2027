@@ -3,10 +3,10 @@ import { desc, eq, ne, and, lte } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { mrr, monthTotals, overdue } from "@/lib/billing";
 import { eur, monthLabel, monthStart, today, weekStart } from "@/lib/dates";
-import { runAgentAction } from "./actions";
+import { recentFailedRuns, recentJarvisRuns, runState, runTone, toPoll } from "@/lib/runs";
 import { Badge } from "./_components/ui";
 import { Icon } from "./_components/icons";
-import { SubmitButton } from "./_components/client-bits";
+import { JarvisBox, type JarvisItem } from "./_components/jarvis";
 import { greeting, ownerName } from "./_components/owner";
 
 export const dynamic = "force-dynamic";
@@ -18,7 +18,7 @@ type InboxItem = { key: string; tone: "red" | "yellow" | "brand"; title: string;
 
 export default async function Home() {
   const month = monthStart();
-  const [m, totals, late, pending, health, dueTasks, runs] = await Promise.all([
+  const [m, totals, late, pending, health, dueTasks, runs, failedRuns, asked] = await Promise.all([
     mrr(),
     monthTotals(month),
     overdue(),
@@ -36,13 +36,27 @@ export default async function Home() {
       .orderBy(schema.tasks.dueDate)
       .limit(6),
     db.select().from(schema.agentRuns).orderBy(desc(schema.agentRuns.startedAt)).limit(5),
+    recentFailedRuns(24),
+    recentJarvisRuns(5),
   ]);
 
   const lateTotal = late.reduce((s, r) => s + r.owed, 0);
   const collectedPct = totals.due ? Math.round((totals.collected / totals.due) * 100) : 0;
   const apiReady = !!process.env.ANTHROPIC_API_KEY;
 
+  const history: JarvisItem[] = asked.map((r) => {
+    const p = toPoll(r);
+    return { key: `r${r.id}`, runId: r.id, question: p.question ?? "", status: p.status, answer: p.answer, error: p.error, toolCalls: p.toolCalls, startedAt: p.startedAt };
+  });
+
   const inbox: InboxItem[] = [
+    ...failedRuns.map((r) => ({
+      key: `f${r.id}`,
+      tone: "red" as const,
+      title: `${r.agent} run ${runState(r) === "stalled" ? "didn't finish" : "failed"}`,
+      detail: (r.error ?? r.summary ?? "Cut off before it finished").replace(/^Error:\s*/, "").slice(0, 140),
+      href: `/agents/runs/${r.id}`,
+    })),
     ...pending.map((a) => ({ key: `a${a.id}`, tone: "brand" as const, title: `${a.agent} wants to ${a.tool.replaceAll("_", " ").toLowerCase()}`, detail: "Waiting for your OK", href: "/approvals" })),
     ...health
       .filter(({ h }) => h.status === "red")
@@ -51,7 +65,7 @@ export default async function Home() {
     ...health
       .filter(({ h }) => h.status === "yellow")
       .map(({ h, client }) => ({ key: `y${h.id}`, tone: "yellow" as const, title: `${client} is yellow this week`, detail: h.actionNeeded ?? undefined, href: "/health" })),
-  ].slice(0, 6);
+  ].slice(0, 8);
 
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
@@ -65,26 +79,7 @@ export default async function Home() {
         </h1>
         <p className="mt-2 text-center text-sm text-ink/50">Ask about any client, payment, report or task. Jarvis reads the whole OS.</p>
 
-        <form action={runAgentAction} className="mt-8 w-full max-w-xl">
-          <input type="hidden" name="agent" value="jarvis" />
-          <div className="flex items-center gap-2 rounded-2xl border border-line bg-panel p-2 pl-4 shadow-[0_0_40px_rgb(4_153_242/0.10)] focus-within:border-brand/60">
-            <Icon name="spark" className="size-4 shrink-0 text-brand-light" />
-            <input name="instruction" required placeholder="Ask Jarvis anything…" className="min-w-0 flex-1 bg-transparent py-2 text-sm outline-none placeholder:text-ink/35" />
-            <SubmitButton className="brand-gradient grid size-9 shrink-0 place-items-center rounded-full shadow-[0_0_18px_rgb(4_153_242/0.5)] text-white disabled:opacity-50" pendingText="…">
-              <Icon name="send" className="size-4" />
-            </SubmitButton>
-          </div>
-        </form>
-        <div className="mt-4 flex max-w-xl flex-wrap justify-center gap-2">
-          {SUGGESTIONS.map((s) => (
-            <form key={s} action={runAgentAction}>
-              <input type="hidden" name="agent" value="jarvis" />
-              <input type="hidden" name="instruction" value={s} />
-              <button className="rounded-full border border-line bg-panel px-3 py-1.5 text-xs text-ink/60 hover:border-brand/40 hover:text-ink">{s}</button>
-            </form>
-          ))}
-        </div>
-        {!apiReady && <p className="mt-6 text-xs text-amber-300/80">Add ANTHROPIC_API_KEY in Vercel so Jarvis can answer.</p>}
+        <JarvisBox suggestions={SUGGESTIONS} initial={history} apiReady={apiReady} />
 
         <div className="mt-10 grid w-full max-w-xl grid-cols-2 gap-2 sm:grid-cols-4">
           {[
@@ -144,10 +139,12 @@ export default async function Home() {
             <ul className="space-y-2">
               {runs.map((r) => (
                 <li key={r.id} className="flex items-center justify-between gap-3 text-sm">
-                  <span className="min-w-0 truncate">{r.agent}</span>
+                  <Link href={`/agents/runs/${r.id}`} className="min-w-0 truncate hover:text-brand-light">
+                    {r.agent}
+                  </Link>
                   <span className="flex shrink-0 items-center gap-2">
                     <span className="num text-xs text-ink/40">{r.startedAt.toLocaleTimeString("en-IE", { timeZone: "Europe/Dublin", hour: "2-digit", minute: "2-digit" })}</span>
-                    <Badge tone={r.status === "completed" ? "green" : r.status === "running" ? "blue" : r.status === "error" ? "red" : "yellow"}>{r.status}</Badge>
+                    <Badge tone={runTone(runState(r))}>{runState(r)}</Badge>
                   </span>
                 </li>
               ))}

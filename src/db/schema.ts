@@ -102,25 +102,31 @@ export const reports = pgTable("reports", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
-export const agentRuns = pgTable("agent_runs", {
-  id: serial("id").primaryKey(),
-  agent: text("agent").notNull(),
-  trigger: text("trigger", { enum: ["cron", "manual", "webhook", "cli"] }).notNull(),
-  dryRun: boolean("dry_run").notNull().default(false),
-  instruction: text("instruction"),
-  status: text("status", { enum: ["running", "completed", "stopped", "error"] }).notNull().default("running"),
-  summary: text("summary"),
-  toolCalls: integer("tool_calls").notNull().default(0),
-  proposed: integer("proposed").notNull().default(0),
-  blocked: integer("blocked").notNull().default(0),
-  errors: integer("errors").notNull().default(0),
-  inputTokens: integer("input_tokens").notNull().default(0),
-  outputTokens: integer("output_tokens").notNull().default(0),
-  cacheReadTokens: integer("cache_read_tokens").notNull().default(0),
-  events: jsonb("events").$type<ToolEvent[]>().notNull().default([]),
-  startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
-  finishedAt: timestamp("finished_at", { withTimezone: true }),
-});
+export const agentRuns = pgTable(
+  "agent_runs",
+  {
+    id: serial("id").primaryKey(),
+    agent: text("agent").notNull(),
+    trigger: text("trigger", { enum: ["cron", "manual", "webhook", "cli"] }).notNull(),
+    dryRun: boolean("dry_run").notNull().default(false),
+    instruction: text("instruction"),
+    status: text("status", { enum: ["running", "completed", "stopped", "error"] }).notNull().default("running"),
+    summary: text("summary"),
+    /** Why the run failed (status "error"), kept apart from the summary so the UI can show it on its own. */
+    error: text("error"),
+    toolCalls: integer("tool_calls").notNull().default(0),
+    proposed: integer("proposed").notNull().default(0),
+    blocked: integer("blocked").notNull().default(0),
+    errors: integer("errors").notNull().default(0),
+    inputTokens: integer("input_tokens").notNull().default(0),
+    outputTokens: integer("output_tokens").notNull().default(0),
+    cacheReadTokens: integer("cache_read_tokens").notNull().default(0),
+    events: jsonb("events").$type<ToolEvent[]>().notNull().default([]),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+  },
+  (t) => [index("agent_runs_agent_started").on(t.agent, t.startedAt), index("agent_runs_status_started").on(t.status, t.startedAt)],
+);
 
 export const approvals = pgTable(
   "approvals",
@@ -140,11 +146,18 @@ export const approvals = pgTable(
 );
 
 export interface ToolEvent {
+  /** The model's tool_use id (runs from before Nov 2026 don't have it). */
+  id?: string;
   tool: string;
   input: unknown;
   outcome: "ran" | "proposed" | "blocked" | "error";
   note?: string;
   result?: string;
+  /** Model turn the call came from, starting at 1. */
+  turn?: number;
+  /** ISO time the call started, and how long it took. */
+  at?: string;
+  ms?: number;
 }
 
 export type Client = typeof clients.$inferSelect;

@@ -10,7 +10,7 @@ import { db, schema } from "@/db";
 import { SESSION_COOKIE, sessionToken } from "@/lib/auth";
 import { generateMonth, recordPayment } from "@/lib/billing";
 import { executeApproval, rejectApproval } from "@/lib/approvals";
-import { runAgent } from "@/lib/runner";
+import { createRun, executeRun, runAgent } from "@/lib/runner";
 import { AGENTS } from "@/agents/registry";
 import { today, weekStart } from "@/lib/dates";
 
@@ -209,4 +209,21 @@ export async function runAgentAction(form: FormData) {
   after(() => runAgent(agent, { dryRun, instruction, trigger: "manual" }).catch((e) => console.error(e)));
   revalidatePath("/agents");
   redirect("/agents?started=" + agent.name);
+}
+
+const JARVIS_NO_KEY = "Jarvis can't answer yet: ANTHROPIC_API_KEY isn't set. Add it in Vercel → Settings → Environment Variables, then redeploy.";
+
+/**
+ * Ask Jarvis from Home without leaving the page. Creates the run and returns its id straight away;
+ * the run continues in the background and Home polls /api/runs/[id] for the answer.
+ */
+export async function askJarvis(question: string): Promise<{ runId: number } | { error: string }> {
+  const q = question.trim().slice(0, 2000);
+  if (!q) return { error: "Type a question first." };
+  if (!process.env.ANTHROPIC_API_KEY) return { error: JARVIS_NO_KEY };
+  const agent = AGENTS.jarvis;
+  const opts = { instruction: q, trigger: "manual" as const };
+  const run = await createRun(agent, opts);
+  after(() => executeRun(run, agent, opts).catch((e) => console.error(e)));
+  return { runId: run.id };
 }

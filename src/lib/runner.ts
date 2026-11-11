@@ -27,24 +27,53 @@ export interface RunOptions {
   trigger?: AgentRun["trigger"];
 }
 
-export async function runAgent(agent: AgentDefinition, opts: RunOptions = {}): Promise<AgentRun> {
-  const autonomy: Autonomy = opts.dryRun ? "L0" : agent.autonomy;
-  const ctx: AgentContext = { today: today(), instruction: opts.instruction };
-  const task = agent.task(ctx) + (ctx.instruction ? `\n\nExtra instruction for this run: ${ctx.instruction}` : "");
+/** The part of the Anthropic client the loop uses. Tests pass a fake. */
+export type ModelClient = { beta: { messages: { create: Anthropic["beta"]["messages"]["create"] } } };
 
+export interface RunDeps {
+  client?: ModelClient;
+}
+
+/** Inserts the run row (status "running") so callers get its id before the loop starts. */
+export async function createRun(agent: AgentDefinition, opts: RunOptions = {}): Promise<AgentRun> {
   const [run] = await db
     .insert(schema.agentRuns)
     .values({ agent: agent.name, trigger: opts.trigger ?? "manual", dryRun: !!opts.dryRun, instruction: opts.instruction })
     .returning();
+  return run;
+}
+
+/** Creates a run and executes it to the end. */
+export async function runAgent(agent: AgentDefinition, opts: RunOptions = {}, deps: RunDeps = {}): Promise<AgentRun> {
+  return executeRun(await createRun(agent, opts), agent, opts, deps);
+}
+
+/** Runs the agent loop for a run created with createRun, saving progress after every turn. */
+export async function executeRun(run: AgentRun, agent: AgentDefinition, opts: RunOptions = {}, deps: RunDeps = {}): Promise<AgentRun> {
+  const autonomy: Autonomy = opts.dryRun ? "L0" : agent.autonomy;
+  const ctx: AgentContext = { today: today(), instruction: opts.instruction };
+  const task = agent.task(ctx) + (ctx.instruction ? `\n\nExtra instruction for this run: ${ctx.instruction}` : "");
 
   const events: ToolEvent[] = [];
   const usage = { input: 0, output: 0, cacheRead: 0 };
   let summary: string | undefined;
+  let error: string | undefined;
   let status: AgentRun["status"] = "completed";
 
+  const count = (o: ToolEvent["outcome"]) => events.filter((e) => e.outcome === o).length;
+  const progress = () => ({
+    events,
+    toolCalls: events.length,
+    proposed: count("proposed"),
+    blocked: count("blocked"),
+    errors: count("error"),
+    inputTokens: usage.input,
+    outputTokens: usage.output,
+    cacheReadTokens: usage.cacheRead,
+  });
+
   try {
-    requireEnv("ANTHROPIC_API_KEY");
-    const client = new Anthropic();
+    const client: ModelClient = deps.client ?? (requireEnv("ANTHROPIC_API_KEY"), new Anthropic());
     const composioTools = await loadComposioTools({ toolkits: agent.toolkits, tools: agent.tools });
     const tools = [...osToolDefs(agent.osTools ?? ALL_OS_TOOLS), ...composioTools] as Anthropic.Beta.BetaToolUnion[];
     const system = systemPrompt(agent, autonomy);
@@ -90,8 +119,10 @@ export async function runAgent(agent: AgentDefinition, opts: RunOptions = {}): P
 
       const calls = res.content.filter((b): b is Anthropic.Beta.BetaToolUseBlock => b.type === "tool_use");
       // Run the calls in parallel, then return every result in one user message.
-      const results = await Promise.all(calls.map((c) => handleCall(c, agent, autonomy, run.id, events)));
+      const results = await Promise.all(calls.map((c) => handleCall(c, agent, autonomy, run.id, events, turn + 1)));
       messages.push({ role: "user", content: results });
+      // Save progress so the run page shows tool calls while the run is still going.
+      await db.update(schema.agentRuns).set(progress()).where(eq(schema.agentRuns.id, run.id)).catch(() => {});
     }
 
     if (summary === undefined) {
@@ -100,35 +131,44 @@ export async function runAgent(agent: AgentDefinition, opts: RunOptions = {}): P
     }
   } catch (err) {
     status = "error";
-    summary = `Error: ${err instanceof Error ? err.message : String(err)}`;
+    error = describeError(err);
+    summary = `Error: ${error}`;
   }
 
-  const count = (o: ToolEvent["outcome"]) => events.filter((e) => e.outcome === o).length;
   const [saved] = await db
     .update(schema.agentRuns)
-    .set({
-      status,
-      summary,
-      events,
-      toolCalls: events.length,
-      proposed: count("proposed"),
-      blocked: count("blocked"),
-      errors: count("error"),
-      inputTokens: usage.input,
-      outputTokens: usage.output,
-      cacheReadTokens: usage.cacheRead,
-      finishedAt: new Date(),
-    })
+    .set({ ...progress(), status, summary, error, finishedAt: new Date() })
     .where(eq(schema.agentRuns.id, run.id))
     .returning();
 
   const proposed = count("proposed");
   if (proposed || status === "error") {
+    const link = runUrl(run.id);
     await notify(
-      `*${agent.name}* ${status === "error" ? "failed" : "finished"}${proposed ? ` – ${proposed} action(s) waiting for approval` : ""}.\n${(summary ?? "").slice(0, 1500)}`,
+      `${status === "error" ? ":red_circle: " : ""}*${agent.name}* ${status === "error" ? "failed" : "finished"}${proposed ? ` – ${proposed} action(s) waiting for approval` : ""}.\n${(summary ?? "").slice(0, 1500)}${link ? `\n<${link}|Open run #${run.id}>` : ""}`,
     );
   }
   return saved;
+}
+
+/** A readable one-liner for a failure; Anthropic API errors otherwise come through as "529 {json}". */
+export function describeError(err: unknown): string {
+  if (err instanceof Anthropic.APIError) {
+    const body = err.error as { error?: { type?: string; message?: string } } | undefined;
+    const type = body?.error?.type;
+    const message = body?.error?.message;
+    if (err.status === 529 || type === "overloaded_error") return `Claude is overloaded right now (${err.status}). Try again in a minute.${message ? ` (${message})` : ""}`;
+    if (err.status === 401) return "The Anthropic API key was rejected (401). Check ANTHROPIC_API_KEY.";
+    if (err.status === 429) return `Rate limited by the Anthropic API (429).${message ? ` ${message}` : ""}`;
+    if (type || message) return `Anthropic API error ${err.status ?? ""}${type ? ` ${type}` : ""}: ${message ?? ""}`.trim();
+  }
+  return err instanceof Error ? err.message : String(err);
+}
+
+/** Absolute link to a run page, when the app's URL is known (APP_URL, or Vercel's production URL). */
+export function runUrl(id: number): string | undefined {
+  const base = process.env.APP_URL || (process.env.VERCEL_PROJECT_PRODUCTION_URL && `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`);
+  return base ? `${base.replace(/\/$/, "")}/agents/runs/${id}` : undefined;
 }
 
 async function handleCall(
@@ -137,10 +177,12 @@ async function handleCall(
   autonomy: Autonomy,
   runId: number,
   events: ToolEvent[],
+  turn: number,
 ): Promise<Anthropic.Beta.BetaToolResultBlockParam> {
   const input = (call.input ?? {}) as Record<string, unknown>;
   const d = decide(call.name, autonomy, agent.allow);
-  const event: ToolEvent = { tool: call.name, input, outcome: "ran" };
+  const started = Date.now();
+  const event: ToolEvent = { id: call.id, tool: call.name, input, outcome: "ran", turn, at: new Date(started).toISOString() };
   events.push(event);
 
   if (d.action === "block") {
@@ -168,11 +210,13 @@ async function handleCall(
       const toolUse: AnthropicToolUseBlock = { type: "tool_use", id: call.id, name: call.name, input };
       out = await composio().provider.executeToolCall(config.composioUserId, toolUse);
     }
-    event.result = out.length > 2000 ? out.slice(0, 2000) + "…[truncated in log only]" : out;
+    event.result = out.length > 8000 ? out.slice(0, 8000) + "…[truncated in log only]" : out;
+    event.ms = Date.now() - started;
     return { type: "tool_result", tool_use_id: call.id, content: out };
   } catch (err) {
     event.outcome = "error";
     event.note = err instanceof Error ? err.message : String(err);
+    event.ms = Date.now() - started;
     return { type: "tool_result", tool_use_id: call.id, is_error: true, content: `Tool error: ${event.note}` };
   }
 }

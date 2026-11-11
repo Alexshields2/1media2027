@@ -5,7 +5,7 @@ next-env.d.ts
 .env
 .env.*
 !.env.example
-runs/
+/runs/
 dist/
 *.log
 .DS_Store
