@@ -1,13 +1,15 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { SESSION_COOKIE, isValidSession, sessionToken } from "./src/lib/auth";
+import { SESSION_COOKIE, authSecret, verifySigned } from "./src/lib/session-token";
 
-// Every page needs the login cookie, except the login page itself and the
-// machine endpoints (cron and webhooks), which check their own secrets, and the public /api/health check.
+// Every page needs a signed session cookie, except the login and first-run setup pages and the
+// machine endpoints (cron and webhooks), which check their own secrets. This is only the cheap
+// first check (signature, no database): every page and server action also checks the session
+// row and the person's role on the server (src/lib/session.ts), so revoked sessions stop at once.
 export async function proxy(req: NextRequest) {
-  if (!(await sessionToken())) {
-    return new NextResponse("1Media OS needs ADMIN_PASSWORD and a database. Add them in Vercel -> Settings -> Environment Variables / Storage, then redeploy.", { status: 503 });
+  if (!authSecret()) {
+    return new NextResponse("1Media OS needs AUTH_SECRET and a database. Add them in Vercel -> Settings -> Environment Variables / Storage, then redeploy.", { status: 503 });
   }
-  if (await isValidSession(req.cookies.get(SESSION_COOKIE)?.value)) return NextResponse.next();
+  if (await verifySigned(req.cookies.get(SESSION_COOKIE)?.value)) return NextResponse.next();
   const url = req.nextUrl.clone();
   url.pathname = "/login";
   url.search = "";
@@ -15,5 +17,5 @@ export async function proxy(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!login|api/cron|api/webhooks|api/health|_next|favicon.ico|icon|1media-logo.png).*)"],
+  matcher: ["/((?!login|setup|api/cron|api/webhooks|api/health|_next|favicon.ico|icon|1media-logo.png).*)"],
 };

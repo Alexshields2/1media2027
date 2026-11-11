@@ -3,23 +3,26 @@ import { notFound } from "next/navigation";
 import { desc, eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { paymentState } from "@/lib/billing";
+import { can } from "@/lib/roles";
 import { eur, monthLabel } from "@/lib/dates";
 import { updateClient } from "../../actions";
 import { Badge, Card, Empty, PageHeader } from "../../_components/ui";
 import { ClientForm } from "../client-form";
+import { requireUser } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
 const STATE_TONE: Record<string, string> = { paid: "green", part: "yellow", overdue: "red", due: "yellow", upcoming: "gray" };
 
 export default async function ClientPage({ params }: { params: Promise<{ id: string }> }) {
+  const user = await requireUser();
   const id = Number((await params).id);
   if (!Number.isInteger(id)) notFound();
   const [client] = await db.select().from(schema.clients).where(eq(schema.clients.id, id));
   if (!client) notFound();
 
   const [payments, tasks, health, reports] = await Promise.all([
-    db.select().from(schema.payments).where(eq(schema.payments.clientId, id)).orderBy(desc(schema.payments.period)).limit(12),
+    can(user.role, "payments") ? db.select().from(schema.payments).where(eq(schema.payments.clientId, id)).orderBy(desc(schema.payments.period)).limit(12) : Promise.resolve(null),
     db.select().from(schema.tasks).where(eq(schema.tasks.clientId, id)).orderBy(desc(schema.tasks.createdAt)).limit(15),
     db.select().from(schema.healthChecks).where(eq(schema.healthChecks.clientId, id)).orderBy(desc(schema.healthChecks.weekOf)).limit(8),
     db.select().from(schema.reports).where(eq(schema.reports.clientId, id)).orderBy(desc(schema.reports.createdAt)).limit(8),
@@ -31,10 +34,11 @@ export default async function ClientPage({ params }: { params: Promise<{ id: str
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
           <Card title="Details">
-            <ClientForm client={client} action={updateClient.bind(null, id)} submitLabel="Save changes" />
+            <ClientForm client={client} action={updateClient.bind(null, id)} submitLabel="Save changes" showBilling={can(user.role, "client_billing")} />
           </Card>
         </div>
         <div className="space-y-6">
+          {payments && (
           <Card title="Payments">
             {payments.length ? (
               <ul className="divide-y divide-line/70 text-sm">
@@ -57,6 +61,7 @@ export default async function ClientPage({ params }: { params: Promise<{ id: str
               <Empty>No payments yet.</Empty>
             )}
           </Card>
+          )}
           <Card title="Health">
             {health.length ? (
               <ul className="divide-y divide-line/70 text-sm">

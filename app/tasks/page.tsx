@@ -5,6 +5,7 @@ import { today } from "@/lib/dates";
 import { createTask, setTaskStatus } from "../actions";
 import { Badge, Card, Empty, PageHeader, btn, field, input } from "../_components/ui";
 import { SubmitButton } from "../_components/client-bits";
+import { requireUser } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +24,7 @@ const NEXT: Record<string, { to: "todo" | "in_progress" | "review" | "done"; lab
 };
 
 export default async function TasksPage({ searchParams }: { searchParams: Promise<{ client?: string }> }) {
+  const _user = await requireUser();
   const sp = await searchParams;
   const clientFilter = sp.client ? Number(sp.client) : undefined;
   const weekAgo = new Date(Date.now() - 7 * 86_400_000);

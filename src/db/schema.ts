@@ -4,6 +4,56 @@ import {
 
 const money = (name: string) => numeric(name, { precision: 12, scale: 2, mode: "number" });
 
+// ---------- people ----------
+
+/** One row per person who can sign in. Roles: owner (everything) or team (no payments or money). */
+export const users = pgTable(
+  "users",
+  {
+    id: serial("id").primaryKey(),
+    email: text("email").notNull(), // stored lower-case
+    name: text("name").notNull(),
+    role: text("role", { enum: ["owner", "team"] }).notNull().default("team"),
+    active: boolean("active").notNull().default(true),
+    // scrypt hash (see src/lib/password.ts). Null = no password yet (e.g. magic-link-only later).
+    passwordHash: text("password_hash"),
+    lastSignInAt: timestamp("last_sign_in_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("users_email").on(t.email)],
+);
+
+/** Server-side sessions. The cookie holds the id plus an HMAC; deleting or revoking the row signs the person out. */
+export const sessions = pgTable(
+  "sessions",
+  {
+    id: text("id").primaryKey(),
+    userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    method: text("method", { enum: ["password", "admin_password", "magic_link"] }).notNull(),
+    userAgent: text("user_agent"),
+    ip: text("ip"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  },
+  (t) => [index("sessions_user").on(t.userId)],
+);
+
+/** Who did what: sign-ins (and failures, used for rate limiting), approvals, payments, client and user edits. */
+export const auditLog = pgTable(
+  "audit_log",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id").references(() => users.id, { onDelete: "set null" }),
+    action: text("action").notNull(), // e.g. "auth.sign_in", "approval.approve", "payment.record"
+    target: text("target"), // e.g. "approval:12", "client:3", or an email for sign-in attempts
+    detail: jsonb("detail").$type<Record<string, unknown>>(),
+    ip: text("ip"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("audit_action_time").on(t.action, t.createdAt), index("audit_time").on(t.createdAt)],
+);
+
 export const clients = pgTable("clients", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
@@ -141,6 +191,7 @@ export const approvals = pgTable(
     result: text("result"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     decidedAt: timestamp("decided_at", { withTimezone: true }),
+    decidedBy: integer("decided_by").references(() => users.id, { onDelete: "set null" }),
   },
   (t) => [index("approvals_status").on(t.status)],
 );
@@ -167,3 +218,6 @@ export type HealthCheck = typeof healthChecks.$inferSelect;
 export type Report = typeof reports.$inferSelect;
 export type AgentRun = typeof agentRuns.$inferSelect;
 export type Approval = typeof approvals.$inferSelect;
+export type User = typeof users.$inferSelect;
+export type Session = typeof sessions.$inferSelect;
+export type AuditEntry = typeof auditLog.$inferSelect;

@@ -82,3 +82,13 @@ export const btnBrand = "brand-gradient inline-flex items-center justify-center 
 export const btnGhost = "inline-flex items-center justify-center rounded-full border border-line bg-panel px-4 py-2 text-sm font-medium hover:border-brand/50 disabled:opacity-50";
 
 export const HEALTH_TONE: Record<string, string> = { green: "green", yellow: "yellow", red: "red" };
+
+/** Shown instead of a page the signed-in person's role can't see. The check itself happens on the server. */
+export function NoAccess({ what }: { what: string }) {
+  return (
+    <section className="mx-auto mt-16 max-w-md rounded-2xl border border-line bg-panel p-8 text-center">
+      <h1 className="text-lg font-semibold">Owners only</h1>
+      <p className="mt-2 text-sm text-ink/60">{what} is only available to owners. Ask an owner if you need something from here.</p>
+    </section>
+  );
+}

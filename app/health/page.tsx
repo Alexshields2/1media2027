@@ -5,12 +5,14 @@ import { eur, weekStart } from "@/lib/dates";
 import { resolveHealth, saveHealthAction } from "../actions";
 import { Badge, Card, Empty, PageHeader, Table, btn, input } from "../_components/ui";
 import { SubmitButton } from "../_components/client-bits";
+import { requireUser } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
 const ISSUES = ["Everything Healthy", "Campaign Learning", "Client Concern", "Budget Issue", "Tracking Issue", "Poor Lead Quality", "Creative Fatigue", "Lead Volume Down", "CPL Rising", "Leads Not Worked"];
 
 export default async function HealthPage() {
+  const _user = await requireUser();
   const since = new Date(Date.now() - 6 * 7 * 86_400_000).toISOString().slice(0, 10);
   const [rows, clients] = await Promise.all([
     db

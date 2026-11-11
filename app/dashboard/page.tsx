@@ -3,17 +3,18 @@ import { desc, eq, ne, and, lte } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { runState, runTone } from "@/lib/runs";
 import { mrr, monthTotals, overdue } from "@/lib/billing";
+import { can } from "@/lib/roles";
 import { eur, monthLabel, monthStart, today, weekStart } from "@/lib/dates";
 import { Badge, Card, Empty, PageHeader, Stat } from "../_components/ui";
+import { requireUser } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
 export default async function Dashboard() {
+  const user = await requireUser();
   const month = monthStart();
-  const [m, totals, late, pending, health, dueTasks, runs] = await Promise.all([
-    mrr(),
-    monthTotals(month),
-    overdue(),
+  const [money, pending, health, dueTasks, runs] = await Promise.all([
+    moneyFigures(can(user.role, "money_stats")),
     db.select().from(schema.approvals).where(eq(schema.approvals.status, "pending")).orderBy(desc(schema.approvals.createdAt)).limit(5),
     db
       .select({ h: schema.healthChecks, client: schema.clients.name })
@@ -29,21 +30,23 @@ export default async function Dashboard() {
       .limit(8),
     db.select().from(schema.agentRuns).orderBy(desc(schema.agentRuns.startedAt)).limit(5),
   ]);
+  const late = money?.late ?? [];
   const lateTotal = late.reduce((s, r) => s + r.owed, 0);
-  const collectedPct = totals.due ? Math.round((totals.collected / totals.due) * 100) : 0;
 
   return (
     <>
       <PageHeader title="Dashboard" subtitle={`${monthLabel(month)} · today ${today()}`} />
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Stat label="MRR (ex VAT)" value={eur(m.exVat)} hint={`${m.clients} active clients`} />
-        <Stat label="Collected this month" value={eur(totals.collected)} hint={`${collectedPct}% of ${eur(totals.due)}`} tone="good" />
-        <Stat label="Outstanding this month" value={eur(totals.outstanding)} hint={totals.count ? `${totals.count} invoices` : "No rows yet: generate the month in Payments"} />
-        <Stat label="Overdue (all time)" value={eur(lateTotal)} hint={`${late.length} payments`} tone={lateTotal > 0 ? "bad" : undefined} />
-      </div>
+      {money && (
+        <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <Stat label="MRR (ex VAT)" value={eur(money.m.exVat)} hint={`${money.m.clients} active clients`} />
+          <Stat label="Collected this month" value={eur(money.totals.collected)} hint={`${money.totals.due ? Math.round((money.totals.collected / money.totals.due) * 100) : 0}% of ${eur(money.totals.due)}`} tone="good" />
+          <Stat label="Outstanding this month" value={eur(money.totals.outstanding)} hint={money.totals.count ? `${money.totals.count} invoices` : "No rows yet: generate the month in Payments"} />
+          <Stat label="Overdue (all time)" value={eur(lateTotal)} hint={`${late.length} payments`} tone={lateTotal > 0 ? "bad" : undefined} />
+        </div>
+      )}
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6 lg:grid-cols-2">
         <Card title="Needs your OK" actions={<Link href="/approvals" className="text-xs text-brand">All approvals →</Link>}>
           {pending.length ? (
             <ul className="divide-y divide-line/70 text-sm">
@@ -79,6 +82,7 @@ export default async function Dashboard() {
           )}
         </Card>
 
+        {money && (
         <Card title="Overdue payments" actions={<Link href="/payments" className="text-xs text-brand">Payments →</Link>}>
           {late.length ? (
             <ul className="divide-y divide-line/70 text-sm">
@@ -97,6 +101,7 @@ export default async function Dashboard() {
             <Empty>Nothing overdue.</Empty>
           )}
         </Card>
+        )}
 
         <Card title="Tasks due" actions={<Link href="/tasks" className="text-xs text-brand">Tasks →</Link>}>
           {dueTasks.length ? (
@@ -136,3 +141,11 @@ export default async function Dashboard() {
   );
 }
 
+
+
+/** Money figures, loaded only for people allowed to see them (never queried for team members). */
+async function moneyFigures(allowed: boolean) {
+  if (!allowed) return null;
+  const [m, totals, late] = await Promise.all([mrr(), monthTotals(monthStart()), overdue()]);
+  return { m, totals, late };
+}

@@ -15,6 +15,13 @@
       "when": 1794409282812,
       "tag": "0001_agent_run_detail",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1794409311299,
+      "tag": "0002_team_logins",
+      "breakpoints": true
     }
   ]
 }

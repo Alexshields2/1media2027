@@ -9,6 +9,7 @@ import { runState, runTone } from "@/lib/runs";
 import { Badge, Card, Empty, PageHeader, btnGhost } from "../../../_components/ui";
 import { AutoRefresh } from "../../../_components/client-bits";
 import { Markdown } from "../../../_components/markdown";
+import { requireUser } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
@@ -39,6 +40,7 @@ function pretty(v: unknown): string {
 }
 
 export default async function RunPage({ params }: { params: Promise<{ id: string }> }) {
+  await requireUser();
   const id = Number((await params).id);
   if (!Number.isInteger(id) || id <= 0) notFound();
   const [run] = await db.select().from(schema.agentRuns).where(eq(schema.agentRuns.id, id));

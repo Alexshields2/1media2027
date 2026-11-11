@@ -30,7 +30,8 @@ function Select({ name, title, value, options }: { name: string; title: string; 
   );
 }
 
-export function ClientForm({ client, action, submitLabel }: { client?: Client; action: (f: FormData) => Promise<void>; submitLabel: string }) {
+/** showBilling=false (team members) leaves out retainer, VAT, billing method and Stripe customer; the server ignores them too. */
+export function ClientForm({ client, action, submitLabel, showBilling = true }: { client?: Client; action: (f: FormData) => Promise<void>; submitLabel: string; showBilling?: boolean }) {
   const c = client;
   return (
     <form action={action} className="space-y-6">
@@ -46,18 +47,20 @@ export function ClientForm({ client, action, submitLabel }: { client?: Client; a
         <Field name="startDate" title="Start date" type="date" defaultValue={c?.startDate} />
       </fieldset>
 
+      {showBilling && (
       <fieldset className="grid gap-4 sm:grid-cols-3">
         <legend className="mb-2 text-sm font-semibold">Billing</legend>
         <Field name="retainerExVat" title="Monthly retainer (ex VAT)" type="number" defaultValue={c?.retainerExVat} />
         <Select name="vat" title="VAT" value={c?.vat ?? "plus"} options={[["plus", "Plus VAT (23%)"], ["inc", "Inc VAT"], ["none", "No VAT"]]} />
         <Select name="billingMethod" title="Billing method" value={c?.billingMethod ?? "invoice"} options={[["stripe", "Stripe"], ["invoice", "Invoice"], ["revolut", "Revolut"], ["aib", "AIB"], ["cash", "Cash"]]} />
       </fieldset>
+      )}
 
       <fieldset className="grid gap-4 sm:grid-cols-3">
         <legend className="mb-2 text-sm font-semibold">Integrations</legend>
         <Field name="metaAdAccountIds" title="Meta ad account IDs" defaultValue={c?.metaAdAccountIds} placeholder="Comma separated" />
         <Field name="ghlLocationId" title="GoHighLevel location ID" defaultValue={c?.ghlLocationId} />
-        <Field name="stripeCustomerId" title="Stripe customer ID" defaultValue={c?.stripeCustomerId} placeholder="cus_…" />
+        {showBilling && <Field name="stripeCustomerId" title="Stripe customer ID" defaultValue={c?.stripeCustomerId} placeholder="cus_…" />}
       </fieldset>
 
       <fieldset className="grid gap-4 sm:grid-cols-3">

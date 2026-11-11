@@ -6,7 +6,7 @@ import { logout } from "../actions";
 import { Logo } from "./logo";
 import { Icon, type IconName } from "./icons";
 
-type L = { href: string; label: string; icon: IconName };
+type L = { href: string; label: string; icon: IconName; ownerOnly?: boolean };
 const GROUPS: { title?: string; links: L[] }[] = [
   {
     links: [
@@ -18,7 +18,7 @@ const GROUPS: { title?: string; links: L[] }[] = [
     title: "Agency",
     links: [
       { href: "/clients", label: "Clients", icon: "users" },
-      { href: "/payments", label: "Payments", icon: "euro" },
+      { href: "/payments", label: "Payments", icon: "euro", ownerOnly: true },
       { href: "/tasks", label: "Tasks", icon: "check" },
       { href: "/health", label: "Client health", icon: "pulse" },
       { href: "/reports", label: "Reports", icon: "doc" },
@@ -31,12 +31,17 @@ const GROUPS: { title?: string; links: L[] }[] = [
       { href: "/agents", label: "Agents", icon: "spark" },
     ],
   },
+  {
+    links: [{ href: "/settings", label: "Settings", icon: "gear" }],
+  },
 ];
 
-export function Nav({ owner }: { owner: string }) {
+export function Nav({ user }: { user: { name: string; role: "owner" | "team" } }) {
   const path = usePathname();
   const active = (href: string) => (href === "/" ? path === "/" : path.startsWith(href));
-  const all = GROUPS.flatMap((g) => g.links);
+  // Hiding links is only convenience: the pages and actions check the role on the server.
+  const groups = GROUPS.map((g) => ({ ...g, links: g.links.filter((l) => !l.ownerOnly || user.role === "owner") }));
+  const all = groups.flatMap((g) => g.links);
   return (
     <>
       {/* Desktop sidebar */}
@@ -45,7 +50,7 @@ export function Nav({ owner }: { owner: string }) {
           <Logo sub="Operating system" />
         </Link>
         <nav className="flex-1 space-y-5 overflow-y-auto px-3">
-          {GROUPS.map((g, i) => (
+          {groups.map((g, i) => (
             <div key={i}>
               {g.title && <div className="px-3 pb-1.5 text-[10px] font-semibold tracking-[0.16em] text-ink/35 uppercase">{g.title}</div>}
               <div className="space-y-0.5">
@@ -65,10 +70,10 @@ export function Nav({ owner }: { owner: string }) {
         </nav>
         <div className="m-3 rounded-xl border border-line bg-panel p-3">
           <div className="flex items-center gap-2.5">
-            <span className="brand-gradient grid size-8 place-items-center rounded-full text-xs font-bold text-white">{owner.slice(0, 1).toUpperCase()}</span>
+            <span className="brand-gradient grid size-8 place-items-center rounded-full text-xs font-bold text-white">{user.name.slice(0, 1).toUpperCase()}</span>
             <span className="min-w-0 leading-tight">
-              <span className="block truncate text-sm font-medium">{owner}</span>
-              <span className="block text-xs text-ink/40">1Media</span>
+              <span className="block truncate text-sm font-medium">{user.name}</span>
+              <span className="block text-xs text-ink/40">1Media · {user.role === "owner" ? "Owner" : "Team"}</span>
             </span>
           </div>
           <form action={logout} className="mt-3">

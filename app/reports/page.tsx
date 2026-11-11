@@ -5,10 +5,12 @@ import { eur } from "@/lib/dates";
 import { setReportStatus, updateReportBody } from "../actions";
 import { Badge, Card, Empty, PageHeader, btnGhost, btn } from "../_components/ui";
 import { CopyButton, SubmitButton } from "../_components/client-bits";
+import { requireUser } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
 export default async function ReportsPage({ searchParams }: { searchParams: Promise<{ show?: string }> }) {
+  const _user = await requireUser();
   const sp = await searchParams;
   const showSent = sp.show === "all";
   const rows = await db

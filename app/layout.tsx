@@ -1,11 +1,9 @@
 import type { Metadata } from "next";
-import { cookies } from "next/headers";
 import { count, eq } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { SESSION_COOKIE, isValidSession } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/session";
 import { Nav } from "./_components/nav";
 import { TopBar } from "./_components/topbar";
-import { ownerName } from "./_components/owner";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -23,14 +21,14 @@ async function pendingApprovals() {
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const signedIn = await isValidSession((await cookies()).get(SESSION_COOKIE)?.value);
+  const user = await getCurrentUser();
   const date = new Date().toLocaleDateString("en-IE", { timeZone: "Europe/Dublin", weekday: "short", day: "numeric", month: "short" });
   return (
     <html lang="en">
       <body className="min-h-screen antialiased">
-        {signedIn ? (
+        {user ? (
           <div className="flex min-h-screen flex-col md:flex-row">
-            <Nav owner={ownerName()} />
+            <Nav user={{ name: user.name, role: user.role }} />
             <div className="flex min-w-0 flex-1 flex-col">
               <TopBar pending={await pendingApprovals()} date={date} />
               <main className="min-w-0 flex-1 px-4 py-6 md:px-8 md:py-8">

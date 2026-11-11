@@ -1,0 +1,53 @@
+// Who may do what. Pure functions so they are easy to test; src/lib/session.ts enforces them
+// on the server (pages, server actions, route handlers).
+//
+//   owner: everything
+//   team:  everything except money: Payments, the money stats on Home/Dashboard, client billing
+//          fields, approving finance or Stripe actions, running the Finance agent, managing people.
+
+export type Role = "owner" | "team";
+
+export type Permission =
+  | "payments" // see and change Payments, payment history on client pages
+  | "money_stats" // MRR, collected, outstanding, overdue on Home and Dashboard
+  | "client_billing" // see and edit retainer, VAT, billing method, Stripe customer
+  | "approve_finance" // approve or reject finance / Stripe actions
+  | "run_finance_agent"
+  | "manage_users" // add people, reset passwords, change roles
+  | "view_audit";
+
+const TEAM: ReadonlySet<Permission> = new Set<Permission>([]);
+
+export function can(role: Role | null | undefined, permission: Permission): boolean {
+  if (role === "owner") return true;
+  if (role === "team") return TEAM.has(permission);
+  return false;
+}
+
+/** Agents whose actions are about money. */
+const FINANCE_AGENTS = new Set(["finance"]);
+
+/** True when an approval (or agent action) moves money or touches billing. */
+export function isFinanceAction(agent: string, tool: string): boolean {
+  const t = tool.toUpperCase();
+  return FINANCE_AGENTS.has(agent) || t.startsWith("STRIPE_") || /(^|_)(PAYMENT|PAYMENTS|INVOICE|INVOICES|BILLING|REFUND|PAYOUT)(_|$)/.test(t);
+}
+
+/** May this role approve or reject this action? */
+export function canDecide(role: Role | null | undefined, agent: string, tool: string): boolean {
+  if (!role) return false;
+  return isFinanceAction(agent, tool) ? can(role, "approve_finance") : true;
+}
+
+/** May this role run this agent? */
+export function canRunAgent(role: Role | null | undefined, agent: string): boolean {
+  if (!role) return false;
+  return FINANCE_AGENTS.has(agent) ? can(role, "run_finance_agent") : true;
+}
+
+export class ForbiddenError extends Error {
+  constructor(what = "do that") {
+    super(`Your account isn't allowed to ${what}. Ask an owner.`);
+    this.name = "ForbiddenError";
+  }
+}
