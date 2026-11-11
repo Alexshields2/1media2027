@@ -1,10 +1,10 @@
 "use server";
 
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { db, schema } from "@/db";
 import { SETUP_COOKIE, signValue } from "@/lib/session-token";
@@ -21,6 +21,8 @@ import { AGENTS } from "@/agents/registry";
 import { today, weekStart } from "@/lib/dates";
 import { assignIncoming, ignoreIncoming, importBankCsv, restoreIncoming } from "@/lib/reconcile";
 import { saveCashSummary } from "@/lib/finance";
+import { appOrigin, dispatchJobs, enqueueReportJobs, processJob, publishMonthEndPdf, resetJob, type JobOptions } from "@/lib/report-jobs";
+import { periodFor } from "@/lib/report-metrics";
 
 // ---------- auth ----------
 
@@ -105,6 +107,7 @@ const clientFields = (f: FormData) => ({
   metaAdAccountIds: str(f, "metaAdAccountIds"),
   ghlLocationId: str(f, "ghlLocationId"),
   stripeCustomerId: str(f, "stripeCustomerId"),
+  driveFolderId: str(f, "driveFolderId"),
   cplTarget: num(f, "cplTarget"),
   reportCurrency: (str(f, "reportCurrency") ?? "EUR") as "EUR" | "USD",
   reportGreeting: str(f, "reportGreeting") ?? "Hi guys",
@@ -312,7 +315,10 @@ export async function resolveHealth(id: number) {
 
 export async function setReportStatus(id: number, status: "draft" | "sent") {
   await requireSignedIn();
-  await db.update(schema.reports).set({ status }).where(eq(schema.reports.id, id));
+  await db
+    .update(schema.reports)
+    .set({ status, sentAt: status === "sent" ? new Date() : null })
+    .where(eq(schema.reports.id, id));
   revalidatePath("/reports");
 }
 
@@ -320,7 +326,60 @@ export async function updateReportBody(id: number, form: FormData) {
   await requireSignedIn();
   const body = str(form, "body");
   if (!body) return;
-  await db.update(schema.reports).set({ body }).where(eq(schema.reports.id, id));
+  await db.update(schema.reports).set({ body, updatedAt: new Date() }).where(eq(schema.reports.id, id));
+  revalidatePath("/reports");
+}
+
+/**
+ * Starts report jobs: one worker function per job via the fan-out route. If the fan-out can't
+ * be reached (no CRON_SECRET, or a protected preview), the jobs run here in the background instead.
+ */
+async function startJobs(ids: number[]) {
+  if (!ids.length) return;
+  const h = await headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";
+  const proto = h.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
+  const { failed } = await dispatchJobs(appOrigin(`${proto}://${host}`), ids, "manual");
+  if (failed.length) {
+    const opts: JobOptions = { trigger: "manual", redispatch: async (id) => void (await processJob(id, opts)) };
+    after(() => Promise.all(failed.map((id) => processJob(id, opts))).catch((e) => console.error(e)));
+  }
+}
+
+export async function runReportsAction(kind: "weekly" | "monthly", period: string) {
+  await requireSignedIn();
+  const { queued } = await enqueueReportJobs(kind, periodFor(kind, period));
+  await startJobs(queued.map((j) => j.id));
+  revalidatePath("/reports");
+}
+
+export async function retryReportJobAction(jobId: number) {
+  await requireSignedIn();
+  const job = await resetJob(jobId);
+  if (job) await startJobs([job.id]);
+  revalidatePath("/reports");
+}
+
+export async function retryFailedReportsAction(kind: "weekly" | "monthly", period: string) {
+  await requireSignedIn();
+  const jobs = await db
+    .select({ id: schema.reportJobs.id })
+    .from(schema.reportJobs)
+    .where(and(eq(schema.reportJobs.kind, kind), eq(schema.reportJobs.period, period), eq(schema.reportJobs.status, "failed")));
+  const reset = (await Promise.all(jobs.map((j) => resetJob(j.id)))).filter((j) => j !== null);
+  await startJobs(reset.map((j) => j.id));
+  revalidatePath("/reports");
+}
+
+/** Rebuilds the month-end PDF and saves it to the client's Drive folder again. */
+export async function saveReportToDriveAction(reportId: number) {
+  await requireSignedIn();
+  const [row] = await db
+    .select({ r: schema.reports, c: schema.clients })
+    .from(schema.reports)
+    .innerJoin(schema.clients, eq(schema.clients.id, schema.reports.clientId))
+    .where(eq(schema.reports.id, reportId));
+  if (row) await publishMonthEndPdf(row.r, row.c);
   revalidatePath("/reports");
 }
 
@@ -360,6 +419,13 @@ export async function runAgentAction(form: FormData) {
   const instruction = str(form, "instruction") ?? undefined;
   if (agent.needsInstruction && !instruction) throw new Error("This agent needs an instruction.");
   const dryRun = form.get("dryRun") === "on";
+  const reportKind = agent.name === "weekly-report" ? "weekly" : agent.name === "month-end-report" ? "monthly" : null;
+  if (reportKind && !dryRun && !instruction) {
+    // A full run writes one report per client, each in its own function (see src/lib/report-jobs.ts).
+    const { period, queued } = await enqueueReportJobs(reportKind);
+    await startJobs(queued.map((j) => j.id));
+    redirect(`/reports?view=${reportKind === "weekly" ? "week" : "month"}&${reportKind === "weekly" ? "week" : "month"}=${period.period}`);
+  }
   // Respond straight away; the run continues in the background and shows up under Recent runs.
   after(() => runAgent(agent, { dryRun, instruction, trigger: "manual" }).catch((e) => console.error(e)));
   revalidatePath("/agents");

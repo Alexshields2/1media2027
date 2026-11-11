@@ -120,7 +120,7 @@ describe("finance agent (database, model mocked)", { skip: skipReason }, () => {
 
   test("queues chasers as approvals (never sends), dedupes, flags missing email, saves and posts the cash summary", async () => {
     const { client, seen } = fridayScript();
-    const run = await runAgent(finance, { client, trigger: "manual" });
+    const run = await runAgent(finance, { trigger: "manual" }, { client });
     assert.equal(run.status, "completed", run.summary ?? "");
 
     // The model was offered the finance tools and no Gmail tools (Composio isn't configured).
@@ -161,7 +161,7 @@ describe("finance agent (database, model mocked)", { skip: skipReason }, () => {
 
   test("a second run doesn't queue the same chaser again", async () => {
     const { client } = fridayScript();
-    await runAgent(finance, { client, trigger: "manual" });
+    await runAgent(finance, { trigger: "manual" }, { client });
     const approvals = await db.db.select().from(db.schema.approvals);
     assert.equal(approvals.length, 1);
   });
@@ -176,7 +176,7 @@ describe("finance agent (database, model mocked)", { skip: skipReason }, () => {
   test("dry run (L0) blocks chasers and the summary", async () => {
     const before = (await db.db.select().from(db.schema.cashSummaries)).length;
     const { client } = fridayScript();
-    const run = await runAgent(finance, { client, trigger: "manual", dryRun: true });
+    const run = await runAgent(finance, { trigger: "manual", dryRun: true }, { client });
     assert.ok(run.events.filter((e) => e.tool !== "OS_GET_RECEIVABLES").every((e) => e.outcome === "blocked"));
     assert.equal((await db.db.select().from(db.schema.cashSummaries)).length, before);
   });

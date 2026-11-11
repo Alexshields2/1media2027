@@ -11,7 +11,7 @@ The operating system for 1Media: clients, cash, delivery and the AI agents that 
 | **Payments** | One row per client per month, generated from the retainer. Stripe payments reconcile automatically; upload a Revolut Business or AIB CSV and confirm the suggested matches; anything unmatched waits for one-click assignment. Overdue by age (0–14, 15–30, 31–60, 60+ days), balance per client, and the weekly cash summary |
 | **Tasks** | Board (to do / in progress / review / done), filtered by client. Agents add tasks too |
 | **Client health** | Weekly traffic light per client, with a 6-week history |
-| **Reports** | Weekly WhatsApp reports and month-end reports written by the agents: edit, copy, mark sent |
+| **Reports** | Per-client week view: spend, leads, CPL, impressions, clicks and CTR with week-on-week change, the WhatsApp-ready text (copy for WhatsApp, mark sent), and a run-status strip with a Retry button per client. Month-end view with a PDF per client (download, or saved to the client's Drive folder) |
 | **Approvals** | Anything an agent wants to send, charge or change outside the OS waits here. Approve runs it; reject drops it |
 | **Agents** | Run any agent now (dry run by default) and read every run's summary and tool calls |
 | **Settings** | People and roles (owner / team), password resets, integration status, audit log |
@@ -21,8 +21,8 @@ The operating system for 1Media: clients, cash, delivery and the AI agents that 
 | Agent | When | Does |
 |---|---|---|
 | Finance | Weekdays 08:00 | Flags overdue clients by age, queues chasers in Approvals (never sends), saves a Friday cash summary and posts it to Slack |
-| Weekly reports | Mondays 07:00 | Every client's WhatsApp report from Meta Ads, leads and tasks |
-| Month-end reports | 1st, 09:00 | One executive report per client from the month's data |
+| Weekly reports | Mondays 07:00 | Every client's WhatsApp report from Meta Ads, leads and tasks, with the numbers saved |
+| Month-end reports | 1st, 09:00 | One executive report and PDF per client from the month's weekly numbers |
 | Client health | Weekdays 08:30 | CPL against target, lead volume, creative fatigue, leads left untouched in GHL |
 | Inbox | On demand | Sorts Gmail by client, drafts replies, creates tasks |
 | Call prep | On demand | A brief before each client call, with every lead by name |
@@ -31,6 +31,8 @@ The operating system for 1Media: clients, cash, delivery and the AI agents that 
 | Ask Jarvis | On demand | Answers any question about the agency. Read-only |
 
 On the 1st of each month a billing job (no AI) also creates that month's payment rows.
+
+**Reports run one client at a time.** The weekly and month-end crons don't run one agent over every client. They create one job per active client and call `/api/cron/report-worker` once per job, so each client gets its own function and its own 300-second limit. A failed client retries up to 3 times; a client whose function timed out is picked up again by the next cron (every cron sweeps the queue). The Reports page shows each client's status with a Retry button. See `src/lib/report-jobs.ts`.
 
 **Safety:**
 - Every agent has a level: read-only, asks before any change, or updates the OS itself and asks before anything external.
@@ -58,6 +60,7 @@ Agents use Claude (Anthropic API). They reach Gmail, Calendar, Drive, Meta Ads, 
 - `COMPOSIO_API_KEY` connects Gmail, Calendar, Meta Ads, GoHighLevel and Stripe for the agents. After adding it, run `npm run connect` and open each login link.
 - `STRIPE_WEBHOOK_SECRET` records Stripe payments automatically. In Stripe → Developers → Webhooks, add the endpoint `https://<your-app>.vercel.app/api/webhooks/stripe` with the events `invoice.paid`, `invoice.payment_succeeded`, `invoice.updated`, `invoice.payment_failed` and `charge.refunded`, and copy its signing secret (`whsec_…`). Put each client's Stripe customer ID (`cus_…`) on the client so payments match by customer.
 - `SLACK_WEBHOOK_URL` sends agent summaries and approval alerts to Slack.
+- Month-end PDFs go to each client's Drive folder when Composio has Google Drive connected and the client record has a **Google Drive folder ID**. Otherwise download them from Reports.
 - `AGENTS_PAUSED=true` pauses every scheduled agent.
 
 **Notes:**
@@ -180,6 +183,18 @@ TEST_DATABASE_URL=postgres://postgres@localhost:5433/postgres npm test
 - **Bank (Revolut Business, AIB):** upload the CSV export on the Payments page. Only money in is read; each credit gets suggested matches (amount, client or contact name in the payer/reference, month named in the reference, date window). Nothing is recorded until you confirm. Re-uploading an overlapping export is safe. Column names per bank live in `src/lib/bank-csv.ts` (`BANK_FORMATS`).
 - **Finance agent:** reads receivables by age, queues one chaser per client per stage (3, 7, 14 days) in Approvals, and on Fridays saves the cash summary (collected, outstanding, overdue by age, forecast for the month) and posts it to Slack.
 
+To try the reporting loop without API keys, set `AGENTS_MOCK=true` (a scripted model with fixture Meta Ads and GoHighLevel data; ignored in production), then run this week's reports for every client:
+
+```bash
+AGENTS_MOCK=true npm run agent -- reports weekly
+```
+
+The reporting-loop tests need a throwaway Postgres database (every table in it is emptied):
+
+```bash
+TEST_DATABASE_URL=postgres://localhost/onemedia_test npm run test:db
+```
+
 ## Code map
 
 ```
@@ -199,6 +214,9 @@ src/lib/bank-csv.ts     Revolut/AIB CSV parsing (column mapping is data)
 src/lib/matching.ts     match scoring and aging buckets (pure)
 src/lib/reconcile.ts    incoming payments -> payment rows, owner assignment
 src/lib/finance.ts      receivables, chasers, cash summary
+src/lib/report-jobs.ts  per-client report jobs: enqueue, fan-out, retries, sweep
+src/lib/report-pdf.ts   month-end PDF (pdf-lib, no browser needed)
+src/lib/mock-agents.ts  scripted model + fixture Meta Ads/GHL tools (tests, AGENTS_MOCK)
 src/agents/             one folder per agent: settings and playbook
 drizzle/                database migrations
 scripts/                demo seed, Notion import, Composio connect

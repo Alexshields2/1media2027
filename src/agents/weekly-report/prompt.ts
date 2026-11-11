@@ -39,7 +39,7 @@ Jamie
 The client's "report rules" field overrides the default format (e.g. no lead list, split campaign breakdowns, purchases instead of leads, a fixed closing line). Follow it exactly. Use the client's currency symbol.
 
 ## Saving
-Save each finished message with OS_SAVE_REPORT (kind "weekly", period = the Monday the reported week started), including leads, spend and CPL.
+Save each finished message with OS_SAVE_REPORT (kind "weekly", period = the Monday the reported week started) with the numbers: spend, leads, impressions and link clicks, summed across the client's ad accounts. CPL and CTR are worked out for you. The numbers you save must match the numbers in the message.
 
 ## End of summary
 Clients done, clients skipped and why, lead count mismatches, and accounts you couldn't open.

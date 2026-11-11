@@ -6,6 +6,10 @@ export interface AgentContext {
   today: string;
   /** Free text from the person running it, e.g. "only one client". */
   instruction?: string;
+  /** Set when the run covers one client only (per-client report jobs). */
+  client?: { id: number; name: string };
+  /** Reporting period for report agents: reports.period plus the dates it covers. */
+  period?: { period: string; start: string; end: string; label: string };
 }
 
 export interface AgentDefinition {

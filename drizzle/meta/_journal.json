@@ -36,6 +36,13 @@
       "when": 1794409445148,
       "tag": "0004_money_loop",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1794409644103,
+      "tag": "0005_reporting_loop",
+      "breakpoints": true
     }
   ]
 }

@@ -61,6 +61,7 @@ export function ClientForm({ client, action, submitLabel, showBilling = true }: 
         <Field name="metaAdAccountIds" title="Meta ad account IDs" defaultValue={c?.metaAdAccountIds} placeholder="Comma separated" />
         <Field name="ghlLocationId" title="GoHighLevel location ID" defaultValue={c?.ghlLocationId} />
         {showBilling && <Field name="stripeCustomerId" title="Stripe customer ID" defaultValue={c?.stripeCustomerId} placeholder="cus_…" />}
+        <Field name="driveFolderId" title="Google Drive folder ID" defaultValue={c?.driveFolderId} placeholder="Month-end PDFs are saved here" />
       </fieldset>
 
       <fieldset className="grid gap-4 sm:grid-cols-3">
