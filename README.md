@@ -40,30 +40,24 @@ Agents use Claude (Anthropic API). They reach Gmail, Calendar, Drive, Meta Ads, 
 
 ## Deploy to Vercel
 
-1. **Import the repo:** vercel.com → Add New → Project → import `1media2027`. The framework (Next.js) is detected automatically.
-2. **Add a database:** in the project, Storage → Create → Neon (Postgres). This sets `DATABASE_URL`.
-3. **Add environment variables** (Settings → Environment Variables). See `.env.example` for the full list:
-   - `ADMIN_PASSWORD`: the dashboard login.
-   - `AUTH_SECRET`: any long random string.
+1. **Import the repo:** go to [vercel.com/new](https://vercel.com/new), find **1media2027** under "Import Git Repository" (connect GitHub if asked), and click **Import**.
+2. **Add a password:** before clicking Deploy, open **Environment Variables** and add:
+   - `ADMIN_PASSWORD`: your dashboard login.
    - `CRON_SECRET`: any long random string.
-   - `ANTHROPIC_API_KEY`
-   - `COMPOSIO_API_KEY`, and optionally `COMPOSIO_USER_ID`.
-   - Optional: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` and `SLACK_WEBHOOK_URL`.
-4. **Create the tables:** run this once from your computer, with `DATABASE_URL` set to the Neon URL:
-   ```bash
-   npm install
-   ```
-   ```bash
-   npm run db:migrate
-   ```
-5. **Redeploy.** The cron jobs in `vercel.json` start running automatically.
-6. **Stripe:** Developers → Webhooks → add the endpoint `https://<your-app>.vercel.app/api/webhooks/stripe` with the event `invoice.paid`, and copy its signing secret into `STRIPE_WEBHOOK_SECRET`.
-7. **Connect your apps:** run `npm run connect`, then open each login link and sign in with the 1Media accounts.
+   - `ANTHROPIC_API_KEY`: for the agents.
+   Then click **Deploy**.
+3. **Add the database:** in the new project, go to **Storage → Create Database → Neon → Create → Connect**, then **Deployments → ⋯ → Redeploy**. The tables are created automatically during the build.
+4. Open the site and log in with `ADMIN_PASSWORD`.
+
+**Optional, any time later** (Settings → Environment Variables, then redeploy):
+- `COMPOSIO_API_KEY` connects Gmail, Calendar, Meta Ads, GoHighLevel and Stripe for the agents. After adding it, run `npm run connect` and open each login link.
+- `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` record Stripe payments automatically. In Stripe → Developers → Webhooks, add the endpoint `https://<your-app>.vercel.app/api/webhooks/stripe` with the event `invoice.paid`.
+- `SLACK_WEBHOOK_URL` sends agent summaries and approval alerts to Slack.
+- `AGENTS_PAUSED=true` pauses every scheduled agent.
 
 **Notes:**
 - Cron times are UTC, so jobs run an hour later in Irish summer time.
-- On Vercel's Hobby plan, crons run at most once a day and functions stop at 300 seconds. Pro is recommended for the weekly report run.
-- To pause every scheduled agent, set `AGENTS_PAUSED=true`.
+- On Vercel's Hobby plan, crons run at most once a day and functions stop after 300 seconds. Pro is recommended.
 
 ## Bring your data across from Notion (read-only)
 

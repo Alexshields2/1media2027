@@ -5,7 +5,7 @@ import { SESSION_COOKIE, isValidSession, sessionToken } from "./src/lib/auth";
 // machine endpoints (cron and webhooks), which check their own secrets.
 export async function proxy(req: NextRequest) {
   if (!(await sessionToken())) {
-    return new NextResponse("Set ADMIN_PASSWORD and AUTH_SECRET to use 1Media OS.", { status: 503 });
+    return new NextResponse("1Media OS needs ADMIN_PASSWORD and a database. Add them in Vercel -> Settings -> Environment Variables / Storage, then redeploy.", { status: 503 });
   }
   if (await isValidSession(req.cookies.get(SESSION_COOKIE)?.value)) return NextResponse.next();
   const url = req.nextUrl.clone();

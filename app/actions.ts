@@ -18,7 +18,7 @@ import { today, weekStart } from "@/lib/dates";
 
 export async function login(_: unknown, form: FormData): Promise<{ error?: string }> {
   const token = await sessionToken();
-  if (!token) return { error: "ADMIN_PASSWORD and AUTH_SECRET are not set on the server." };
+  if (!token) return { error: "ADMIN_PASSWORD (or the database) is not set up on the server yet." };
   if (form.get("password") !== process.env.ADMIN_PASSWORD) return { error: "Wrong password." };
   (await cookies()).set(SESSION_COOKIE, token, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 30 });
   redirect("/");

@@ -5,7 +5,8 @@ export const SESSION_COOKIE = "om_session";
 
 export async function sessionToken(): Promise<string | null> {
   const pw = process.env.ADMIN_PASSWORD;
-  const secret = process.env.AUTH_SECRET;
+  // AUTH_SECRET is optional: without it the (secret) database URL salts the cookie instead.
+  const secret = process.env.AUTH_SECRET || process.env.DATABASE_URL || process.env.POSTGRES_URL;
   if (!pw || !secret) return null;
   const data = new TextEncoder().encode(`${pw}:${secret}`);
   const hash = await crypto.subtle.digest("SHA-256", data);
