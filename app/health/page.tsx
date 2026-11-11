@@ -6,6 +6,7 @@ import { resolveHealth, saveHealthAction } from "../actions";
 import { Badge, Card, Empty, PageHeader, Table, btn, input } from "../_components/ui";
 import { SubmitButton } from "../_components/client-bits";
 import { requireUser } from "@/lib/session";
+import { SignalList } from "./signals";
 
 export const dynamic = "force-dynamic";
 
@@ -30,11 +31,11 @@ export default async function HealthPage() {
 
   return (
     <>
-      <PageHeader title="Client health" subtitle={`Week of ${thisWeek} · the client-health agent fills this in each weekday morning`} />
+      <PageHeader title="Client health" subtitle={`Week of ${thisWeek} · scored each weekday morning from Meta Ads and GHL: CPL vs target, lead volume vs the previous 4 weeks, creative fatigue, leads untouched over 24h`} />
 
       <Card title="This week">
         {current.length ? (
-          <Table head={["Client", "Status", "CPL / target", "Issue", "Reason", "Action", ""]}>
+          <Table head={["Client", "Status", "CPL / target", "Issue", "Why", "Action", ""]}>
             {current.map(({ h, client }) => (
               <tr key={h.id} className="align-top">
                 <td className="px-4 py-2.5 font-medium">
@@ -49,7 +50,10 @@ export default async function HealthPage() {
                   {eur(h.cpl, client.reportCurrency)} <span className="text-ink/40">/ {eur(client.cplTarget, client.reportCurrency)}</span>
                 </td>
                 <td className="px-4 py-2.5">{h.issue}</td>
-                <td className="max-w-64 px-4 py-2.5 text-ink/70">{h.reason}</td>
+                <td className="min-w-72 px-4 py-2.5 text-ink/70">
+                  {h.signals.length ? <SignalList signals={h.signals} /> : h.reason}
+                  {h.source === "manual" && <span className="mt-1 block text-xs text-ink/40">Logged by hand</span>}
+                </td>
                 <td className="max-w-64 px-4 py-2.5">{h.actionNeeded}</td>
                 <td className="px-4 py-2.5">
                   {h.resolved ? (

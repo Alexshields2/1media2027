@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { SESSION_COOKIE, authSecret, verifySigned } from "./src/lib/session-token";
 
 // Every page needs a signed session cookie, except the login and first-run setup pages and the
-// machine endpoints (cron and webhooks), which check their own secrets. This is only the cheap
+// machine endpoints (cron, webhooks and Slack), which check their own secrets. This is only the cheap
 // first check (signature, no database): every page and server action also checks the session
 // row and the person's role on the server (src/lib/session.ts), so revoked sessions stop at once.
 export async function proxy(req: NextRequest) {
@@ -17,5 +17,5 @@ export async function proxy(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!login|setup|api/cron|api/webhooks|api/health|_next|favicon.ico|icon|1media-logo.png).*)"],
+  matcher: ["/((?!login|setup|api/cron|api/webhooks|api/slack|api/health|_next|favicon.ico|icon|1media-logo.png).*)"],
 };

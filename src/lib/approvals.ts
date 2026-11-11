@@ -38,6 +38,26 @@ export async function rejectApproval(approvalId: number, userId: number | null =
     .where(and(eq(schema.approvals.id, approvalId), eq(schema.approvals.status, "pending")));
 }
 
+/** Moves a pending approval to "approved" in one statement, so two clicks can't both run it. */
+export async function claimApproval(approvalId: number) {
+  const [a] = await db
+    .update(schema.approvals)
+    .set({ status: "approved", decidedAt: new Date() })
+    .where(and(eq(schema.approvals.id, approvalId), eq(schema.approvals.status, "pending")))
+    .returning();
+  return a ?? null;
+}
+
+/** Rejects an approval only if it is still pending. */
+export async function rejectIfPending(approvalId: number) {
+  const [a] = await db
+    .update(schema.approvals)
+    .set({ status: "rejected", decidedAt: new Date() })
+    .where(and(eq(schema.approvals.id, approvalId), eq(schema.approvals.status, "pending")))
+    .returning();
+  return a ?? null;
+}
+
 async function finish(id: number, status: "executed" | "failed", result: string) {
   await db.update(schema.approvals).set({ status, result, decidedAt: new Date() }).where(eq(schema.approvals.id, id));
 }

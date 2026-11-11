@@ -137,6 +137,10 @@ export const healthChecks = pgTable(
     issue: text("issue"),
     reason: text("reason"),
     actionNeeded: text("action_needed"),
+    /** Per-signal results from the scoring rules (src/lib/health-score.ts). Empty for manual rows. */
+    signals: jsonb("signals").$type<HealthSignalRow[]>().notNull().default([]),
+    /** The raw numbers the score was computed from (Meta, GHL, history). */
+    metrics: jsonb("metrics").$type<Record<string, unknown>>(),
     resolved: boolean("resolved").notNull().default(false),
     source: text("source").notNull().default("agent"),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -318,6 +322,41 @@ export interface MatchSuggestion {
   reasons: string[];
 }
 
+/** Briefs written by agents for a client: call prep before a call, inbox notes. Shown on the client page. */
+export const briefs = pgTable(
+  "briefs",
+  {
+    id: serial("id").primaryKey(),
+    clientId: integer("client_id").notNull().references(() => clients.id, { onDelete: "cascade" }),
+    kind: text("kind", { enum: ["call_prep", "inbox"] }).notNull(),
+    title: text("title").notNull(),
+    body: text("body").notNull(),
+    /** Every recent lead by name (call prep). */
+    leads: jsonb("leads").$type<BriefLead[]>().notNull().default([]),
+    callAt: timestamp("call_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("briefs_client").on(t.clientId, t.createdAt)],
+);
+
+export interface HealthSignalRow {
+  key: string;
+  label: string;
+  status: "green" | "yellow" | "red" | "unknown";
+  detail: string;
+}
+
+export interface BriefLead {
+  name: string;
+  stage?: string;
+  createdAt?: string;
+  lastContactAt?: string;
+  daysSinceContact?: number;
+  untouched?: boolean;
+  source?: string;
+  note?: string;
+}
+
 export interface ToolEvent {
   /** The model's tool_use id (runs from before Nov 2026 don't have it). */
   id?: string;
@@ -346,3 +385,4 @@ export type Session = typeof sessions.$inferSelect;
 export type AuditEntry = typeof auditLog.$inferSelect;
 export type IncomingPayment = typeof incomingPayments.$inferSelect;
 export type CashSummary = typeof cashSummaries.$inferSelect;
+export type Brief = typeof briefs.$inferSelect;

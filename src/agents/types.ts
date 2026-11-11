@@ -25,6 +25,8 @@ export interface AgentDefinition {
   toolkits: ToolkitSlug[];
   /** Optional exact Composio tool slugs; when set, only these load. */
   tools?: string[];
+  /** Composio tools this agent must never see or call (regexes on the tool slug), e.g. sending email. */
+  excludeTools?: RegExp[];
   /** 1Media OS database tools this agent gets (default: all). */
   osTools?: string[];
   /** Write tools allowed to run even though autonomy would propose them. */

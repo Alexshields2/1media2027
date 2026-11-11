@@ -43,6 +43,13 @@
       "when": 1794409644103,
       "tag": "0005_reporting_loop",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1794409754739,
+      "tag": "0006_health_signals_briefs",
+      "breakpoints": true
     }
   ]
 }

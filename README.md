@@ -10,7 +10,7 @@ The operating system for 1Media: clients, cash, delivery and the AI agents that 
 | **Clients** | Every client with retainer, VAT, billing method, Meta ad accounts, GHL location, Stripe customer, CPL target and report rules |
 | **Payments** | One row per client per month, generated from the retainer. Stripe payments reconcile automatically; upload a Revolut Business or AIB CSV and confirm the suggested matches; anything unmatched waits for one-click assignment. Overdue by age (0–14, 15–30, 31–60, 60+ days), balance per client, and the weekly cash summary |
 | **Tasks** | Board (to do / in progress / review / done), filtered by client. Agents add tasks too |
-| **Client health** | Weekly traffic light per client, with a 6-week history |
+| **Client health** | Weekly traffic light per client, scored from the numbers (CPL vs target, lead volume vs the previous 4 weeks, creative fatigue, GHL leads untouched over 24h) with the reason for each, and a 6-week history |
 | **Reports** | Per-client week view: spend, leads, CPL, impressions, clicks and CTR with week-on-week change, the WhatsApp-ready text (copy for WhatsApp, mark sent), and a run-status strip with a Retry button per client. Month-end view with a PDF per client (download, or saved to the client's Drive folder) |
 | **Approvals** | Anything an agent wants to send, charge or change outside the OS waits here. Approve runs it; reject drops it |
 | **Agents** | Run any agent now (dry run by default) and read every run's summary and tool calls |
@@ -24,8 +24,8 @@ The operating system for 1Media: clients, cash, delivery and the AI agents that 
 | Weekly reports | Mondays 07:00 | Every client's WhatsApp report from Meta Ads, leads and tasks, with the numbers saved |
 | Month-end reports | 1st, 09:00 | One executive report and PDF per client from the month's weekly numbers |
 | Client health | Weekdays 08:30 | CPL against target, lead volume, creative fatigue, leads left untouched in GHL |
-| Inbox | On demand | Sorts Gmail by client, drafts replies, creates tasks |
-| Call prep | On demand | A brief before each client call, with every lead by name |
+| Inbox | On demand | Sorts Gmail by client, creates tasks, notes each client's emails on their page; replies wait in Approvals |
+| Call prep | On demand, or "Prep for call" on a client | A brief on the client page before each call, with every lead by name |
 | Onboarding | On demand | The Signed-to-Scaling set-up plan for a new client |
 | Sales | On demand | Prospect follow-ups and discovery-call prep |
 | Ask Jarvis | On demand | Answers any question about the agency. Read-only |
@@ -61,6 +61,7 @@ Agents use Claude (Anthropic API). They reach Gmail, Calendar, Drive, Meta Ads, 
 - `STRIPE_WEBHOOK_SECRET` records Stripe payments automatically. In Stripe → Developers → Webhooks, add the endpoint `https://<your-app>.vercel.app/api/webhooks/stripe` with the events `invoice.paid`, `invoice.payment_succeeded`, `invoice.updated`, `invoice.payment_failed` and `charge.refunded`, and copy its signing secret (`whsec_…`). Put each client's Stripe customer ID (`cus_…`) on the client so payments match by customer.
 - `SLACK_WEBHOOK_URL` sends agent summaries and approval alerts to Slack.
 - Month-end PDFs go to each client's Drive folder when Composio has Google Drive connected and the client record has a **Google Drive folder ID**. Otherwise download them from Reports.
+- **Jarvis in Slack** (`/jarvis <question>` and Approve / Reject buttons on approval alerts): create a Slack app from `docs/slack-app-manifest.yml` (replace `YOUR-APP` with the site's domain), install it to the workspace and pick the alerts channel. Then set `SLACK_SIGNING_SECRET` (Basic Information → Signing Secret), `SLACK_WEBHOOK_URL` (Incoming Webhooks, from this app so the buttons work) and `SLACK_ALLOWED_USER_IDS` (who may ask and approve). Questions are read-only; approvals run through the same guardrails as the Approvals page.
 - `AGENTS_PAUSED=true` pauses every scheduled agent.
 
 **Notes:**
