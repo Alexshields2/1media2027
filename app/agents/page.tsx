@@ -27,9 +27,9 @@ export default async function AgentsPage({ searchParams }: { searchParams: Promi
     <>
       <PageHeader title="Agents" subtitle="Each agent runs on its schedule, or now from here. Start with a dry run: it reads everything and changes nothing." />
 
-      {sp.started && <div className="mb-4 rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-800">Started {sp.started}. It will appear under Recent runs; refresh in a minute.</div>}
+      {sp.started && <div className="mb-4 rounded-lg bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">Started {sp.started}. It will appear under Recent runs; refresh in a minute.</div>}
       {(!apiReady || !appsReady) && (
-        <div className="mb-4 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-900">
+        <div className="mb-4 rounded-lg bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
           {!apiReady && <p>ANTHROPIC_API_KEY isn&rsquo;t set, so agents can&rsquo;t run yet.</p>}
           {!appsReady && <p>COMPOSIO_API_KEY isn&rsquo;t set. Agents can use the OS database only (no Gmail, Meta, GHL or Stripe).</p>}
         </div>
@@ -38,8 +38,8 @@ export default async function AgentsPage({ searchParams }: { searchParams: Promi
       <div className="grid gap-4 md:grid-cols-2">
         {AGENT_LIST.map((a) => (
           <Card key={a.name} title={a.title} actions={<Badge tone="gray">{a.scheduleLabel ?? "On demand"}</Badge>}>
-            <p className="text-sm text-black/70">{a.description}</p>
-            <p className="mt-2 text-xs text-black/50">
+            <p className="text-sm text-ink/70">{a.description}</p>
+            <p className="mt-2 text-xs text-ink/50">
               {LEVEL[a.autonomy]} · {a.toolkits.length ? `uses ${a.toolkits.join(", ")}` : "OS database only"}
             </p>
             <form action={runAgentAction} className="mt-3 space-y-2">
@@ -54,7 +54,7 @@ export default async function AgentsPage({ searchParams }: { searchParams: Promi
                   Run now
                 </SubmitButton>
                 {a.autonomy !== "L0" && (
-                  <label className="flex items-center gap-1.5 text-sm text-black/70">
+                  <label className="flex items-center gap-1.5 text-sm text-ink/70">
                     <input type="checkbox" name="dryRun" defaultChecked /> Dry run
                   </label>
                 )}
@@ -66,18 +66,18 @@ export default async function AgentsPage({ searchParams }: { searchParams: Promi
 
       <Card title="Recent runs" className="mt-6">
         {runs.length ? (
-          <ul className="divide-y divide-black/5 text-sm">
+          <ul className="divide-y divide-ink/5 text-sm">
             {runs.map((r) => (
               <li key={r.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
                 <Link href={`/agents/runs/${r.id}`} className="hover:underline">
                   <span className="font-medium">{r.agent}</span>
-                  <span className="text-black/50">
+                  <span className="text-ink/50">
                     {" "}
                     · {r.startedAt.toLocaleString("en-IE", { timeZone: "Europe/Dublin" })} · {r.trigger}
                     {r.dryRun ? " · dry run" : ""}
                   </span>
                 </Link>
-                <span className="flex items-center gap-2 text-xs text-black/50">
+                <span className="flex items-center gap-2 text-xs text-ink/50">
                   {r.toolCalls} calls{r.proposed ? ` · ${r.proposed} to approve` : ""}
                   <Badge tone={r.status === "completed" ? "green" : r.status === "running" ? "blue" : r.status === "error" ? "red" : "yellow"}>{r.status}</Badge>
                 </span>

@@ -38,21 +38,21 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
               title={`${client.name} · ${r.kind === "weekly" ? "week of" : ""} ${r.period}`}
               actions={
                 <div className="flex items-center gap-2">
-                  {r.leads != null && <span className="num text-xs text-black/50">{r.leads} leads · {eur(r.spend, client.reportCurrency)} · CPL {eur(r.cpl, client.reportCurrency)}</span>}
+                  {r.leads != null && <span className="num text-xs text-ink/50">{r.leads} leads · {eur(r.spend, client.reportCurrency)} · CPL {eur(r.cpl, client.reportCurrency)}</span>}
                   <Badge tone={r.status === "sent" ? "green" : "yellow"}>{r.status}</Badge>
                 </div>
               }
             >
               <div id={`r${r.id}`} />
               <form action={updateReportBody.bind(null, r.id)}>
-                <textarea name="body" defaultValue={r.body} rows={Math.min(24, r.body.split("\n").length + 1)} className="w-full rounded-md border border-black/10 bg-black/[0.02] p-3 font-mono text-[13px] leading-relaxed outline-none focus:border-brand" />
+                <textarea name="body" defaultValue={r.body} rows={Math.min(24, r.body.split("\n").length + 1)} className="w-full rounded-md border border-ink/10 bg-ink/[0.02] p-3 font-mono text-[13px] leading-relaxed outline-none focus:border-brand" />
                 <div className="mt-2 flex flex-wrap gap-2">
                   <CopyButton text={r.body} className={btn} />
                   <SubmitButton className={btnGhost}>Save edits</SubmitButton>
                 </div>
               </form>
               <form action={setReportStatus.bind(null, r.id, r.status === "sent" ? "draft" : "sent")} className="mt-2">
-                <button className="text-xs text-black/50 underline hover:text-black">{r.status === "sent" ? "Mark as draft" : "Mark as sent"}</button>
+                <button className="text-xs text-ink/50 underline hover:text-ink">{r.status === "sent" ? "Mark as draft" : "Mark as sent"}</button>
               </form>
             </Card>
           ))}

@@ -1,20 +1,52 @@
 @import "tailwindcss";
 
+/* 1Media brand: dark workspace, logo blue (light sky blue -> deep blue). */
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-  --color-brand: #ff5a1f;
-  --color-brand-soft: #fff1ea;
+  --color-brand: #3d8fe6;
+  --color-brand-light: #7cc6f7;
+  --color-brand-deep: #1c5fb8;
+  --color-brand-soft: rgb(61 143 230 / 0.14);
+  /* "ink" is the foreground (text, borders at low opacity); "panel" is a raised surface. */
+  --color-ink: #e9edf3;
+  --color-panel: #171a21;
+  --color-canvas: #0f1116;
+  --color-sidebar: #12141a;
 }
 
 :root {
-  color-scheme: light;
+  color-scheme: dark;
 }
 
 body {
-  background: #f7f7f5;
-  color: #1b1b1a;
+  background: var(--color-canvas);
+  color: var(--color-ink);
 }
 
 .num {
   font-variant-numeric: tabular-nums;
+}
+
+.brand-gradient {
+  background-image: linear-gradient(135deg, var(--color-brand-light), var(--color-brand) 55%, var(--color-brand-deep));
+}
+
+.brand-text {
+  background-image: linear-gradient(90deg, var(--color-brand-light), var(--color-brand));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Soft glow behind the home greeting */
+.home-glow {
+  background: radial-gradient(60% 50% at 50% 40%, rgb(61 143 230 / 0.12), transparent 70%);
+}
+
+input[type="checkbox"] {
+  accent-color: var(--color-brand);
+}
+
+select option {
+  background: var(--color-panel);
 }

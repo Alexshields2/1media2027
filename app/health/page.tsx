@@ -44,17 +44,17 @@ export default async function HealthPage() {
                   <Badge tone={h.status}>{h.status}</Badge>
                 </td>
                 <td className="num px-4 py-2.5">
-                  {eur(h.cpl, client.reportCurrency)} <span className="text-black/40">/ {eur(client.cplTarget, client.reportCurrency)}</span>
+                  {eur(h.cpl, client.reportCurrency)} <span className="text-ink/40">/ {eur(client.cplTarget, client.reportCurrency)}</span>
                 </td>
                 <td className="px-4 py-2.5">{h.issue}</td>
-                <td className="max-w-64 px-4 py-2.5 text-black/70">{h.reason}</td>
+                <td className="max-w-64 px-4 py-2.5 text-ink/70">{h.reason}</td>
                 <td className="max-w-64 px-4 py-2.5">{h.actionNeeded}</td>
                 <td className="px-4 py-2.5">
                   {h.resolved ? (
                     <Badge tone="green">resolved</Badge>
                   ) : h.status !== "green" ? (
                     <form action={resolveHealth.bind(null, h.id)}>
-                      <button className="rounded border border-black/10 px-2 py-0.5 text-xs hover:bg-black/5">Resolve</button>
+                      <button className="rounded border border-ink/10 px-2 py-0.5 text-xs hover:bg-ink/5">Resolve</button>
                     </form>
                   ) : null}
                 </td>
@@ -115,7 +115,7 @@ function HistoryGrid({ rows }: { rows: { client: string; week: string; status: "
   return (
     <table className="text-sm">
       <thead>
-        <tr className="text-xs text-black/50">
+        <tr className="text-xs text-ink/50">
           <th className="px-4 py-1 text-left font-medium">Client</th>
           {weeks.map((w) => (
             <th key={w} className="px-2 py-1 font-medium">
@@ -132,7 +132,7 @@ function HistoryGrid({ rows }: { rows: { client: string; week: string; status: "
               const s = cell.get(`${c}|${w}`);
               return (
                 <td key={w} className="px-2 py-1 text-center">
-                  {s ? <span title={s} className={`inline-block size-3 rounded-full ${color[s]}`} /> : <span className="text-black/20">·</span>}
+                  {s ? <span title={s} className={`inline-block size-3 rounded-full ${color[s]}`} /> : <span className="text-ink/20">·</span>}
                 </td>
               );
             })}

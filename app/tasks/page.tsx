@@ -85,23 +85,23 @@ export default async function TasksPage({ searchParams }: { searchParams: Promis
               {items.length ? (
                 <ul className="space-y-2">
                   {items.map(({ t, client }) => (
-                    <li key={t.id} className="rounded-lg border border-black/10 p-3 text-sm">
+                    <li key={t.id} className="rounded-lg border border-ink/10 p-3 text-sm">
                       <div className="font-medium">{t.title}</div>
-                      <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-black/50">
+                      <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-ink/50">
                         {client && (
                           <Link href={`/clients/${t.clientId}`} className="hover:underline">
                             {client}
                           </Link>
                         )}
-                        {t.dueDate && <span className={t.dueDate < t0 && t.status !== "done" ? "font-medium text-red-600" : ""}>due {t.dueDate}</span>}
+                        {t.dueDate && <span className={t.dueDate < t0 && t.status !== "done" ? "font-medium text-red-400" : ""}>due {t.dueDate}</span>}
                         {t.priority === "high" && <Badge tone="red">high</Badge>}
                         {t.source === "agent" && <Badge tone="brand">agent</Badge>}
                       </div>
-                      {t.details && <details className="mt-1 text-xs text-black/70"><summary className="cursor-pointer text-black/50">Details</summary><p className="mt-1 whitespace-pre-line">{t.details}</p></details>}
+                      {t.details && <details className="mt-1 text-xs text-ink/70"><summary className="cursor-pointer text-ink/50">Details</summary><p className="mt-1 whitespace-pre-line">{t.details}</p></details>}
                       <div className="mt-2 flex gap-1.5">
                         {NEXT[t.status].map((n) => (
                           <form key={n.to} action={setTaskStatus.bind(null, t.id, n.to)}>
-                            <button className="rounded border border-black/10 px-2 py-0.5 text-xs hover:bg-black/5">{n.label}</button>
+                            <button className="rounded border border-ink/10 px-2 py-0.5 text-xs hover:bg-ink/5">{n.label}</button>
                           </form>
                         ))}
                       </div>

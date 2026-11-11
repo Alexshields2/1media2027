@@ -37,13 +37,13 @@ export default async function ClientPage({ params }: { params: Promise<{ id: str
         <div className="space-y-6">
           <Card title="Payments">
             {payments.length ? (
-              <ul className="divide-y divide-black/5 text-sm">
+              <ul className="divide-y divide-ink/5 text-sm">
                 {payments.map((p) => {
                   const s = paymentState(p);
                   return (
                     <li key={p.id} className="flex items-center justify-between gap-2 py-2">
                       <span>
-                        {monthLabel(p.period)} <span className="text-black/50">{p.label !== "Retainer" ? `· ${p.label}` : ""}</span>
+                        {monthLabel(p.period)} <span className="text-ink/50">{p.label !== "Retainer" ? `· ${p.label}` : ""}</span>
                       </span>
                       <span className="flex items-center gap-2">
                         <span className="num">{eur(p.amountDue)}</span>
@@ -59,14 +59,14 @@ export default async function ClientPage({ params }: { params: Promise<{ id: str
           </Card>
           <Card title="Health">
             {health.length ? (
-              <ul className="divide-y divide-black/5 text-sm">
+              <ul className="divide-y divide-ink/5 text-sm">
                 {health.map((h) => (
                   <li key={h.id} className="py-2">
                     <div className="flex items-center justify-between">
-                      <span className="text-black/60">Week of {h.weekOf}</span>
+                      <span className="text-ink/60">Week of {h.weekOf}</span>
                       <Badge tone={h.status}>{h.status}</Badge>
                     </div>
-                    {h.reason && <p className="mt-0.5 text-black/70">{h.reason}</p>}
+                    {h.reason && <p className="mt-0.5 text-ink/70">{h.reason}</p>}
                   </li>
                 ))}
               </ul>
@@ -76,11 +76,11 @@ export default async function ClientPage({ params }: { params: Promise<{ id: str
           </Card>
           <Card title="Tasks">
             {tasks.length ? (
-              <ul className="divide-y divide-black/5 text-sm">
+              <ul className="divide-y divide-ink/5 text-sm">
                 {tasks.map((t) => (
                   <li key={t.id} className="flex items-center justify-between gap-2 py-2">
-                    <span className={t.status === "done" ? "text-black/40 line-through" : ""}>{t.title}</span>
-                    <span className="text-xs text-black/50">{t.dueDate}</span>
+                    <span className={t.status === "done" ? "text-ink/40 line-through" : ""}>{t.title}</span>
+                    <span className="text-xs text-ink/50">{t.dueDate}</span>
                   </li>
                 ))}
               </ul>
@@ -90,7 +90,7 @@ export default async function ClientPage({ params }: { params: Promise<{ id: str
           </Card>
           <Card title="Reports">
             {reports.length ? (
-              <ul className="divide-y divide-black/5 text-sm">
+              <ul className="divide-y divide-ink/5 text-sm">
                 {reports.map((r) => (
                   <li key={r.id} className="flex items-center justify-between py-2">
                     <Link href={`/reports#r${r.id}`} className="hover:underline">

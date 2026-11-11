@@ -20,13 +20,13 @@ function Preview({ input }: { input: Record<string, unknown> }) {
         <dl className="grid grid-cols-[max-content_1fr] gap-x-3 gap-y-1">
           {Object.entries(rest).map(([k, v]) => (
             <div key={k} className="contents">
-              <dt className="text-black/50">{k}</dt>
+              <dt className="text-ink/50">{k}</dt>
               <dd className="break-all">{typeof v === "string" ? v : JSON.stringify(v)}</dd>
             </div>
           ))}
         </dl>
       )}
-      {typeof body === "string" && <pre className="rounded-md bg-black/[0.03] p-3 font-sans whitespace-pre-wrap">{body}</pre>}
+      {typeof body === "string" && <pre className="rounded-md bg-ink/[0.03] p-3 font-sans whitespace-pre-wrap">{body}</pre>}
     </div>
   );
 }
@@ -47,13 +47,13 @@ export default async function ApprovalsPage() {
               key={a.id}
               title={describeAction(a.tool, a.input)}
               actions={
-                <span className="text-xs text-black/50">
+                <span className="text-xs text-ink/50">
                   {a.agent} · {a.tool} · {a.createdAt.toLocaleString("en-IE", { timeZone: "Europe/Dublin" })}
                 </span>
               }
             >
               <Preview input={a.input} />
-              {a.reason && <p className="mt-3 text-xs text-black/50">{a.reason}</p>}
+              {a.reason && <p className="mt-3 text-xs text-ink/50">{a.reason}</p>}
               <div className="mt-4 flex gap-2">
                 <form action={approve.bind(null, a.id)}>
                   <SubmitButton className={btnBrand} pendingText="Running…">
@@ -64,7 +64,7 @@ export default async function ApprovalsPage() {
                   <SubmitButton className={btnGhost}>Reject</SubmitButton>
                 </form>
                 {a.runId && (
-                  <Link href={`/agents/runs/${a.runId}`} className="self-center text-xs text-black/50 underline">
+                  <Link href={`/agents/runs/${a.runId}`} className="self-center text-xs text-ink/50 underline">
                     See the run
                   </Link>
                 )}
@@ -80,7 +80,7 @@ export default async function ApprovalsPage() {
 
       <Card title="Recently decided" className="mt-6">
         {recent.length ? (
-          <ul className="divide-y divide-black/5 text-sm">
+          <ul className="divide-y divide-ink/5 text-sm">
             {recent.map((a) => (
               <li key={a.id} className="py-2">
                 <div className="flex items-center justify-between gap-2">
@@ -89,7 +89,7 @@ export default async function ApprovalsPage() {
                   </span>
                   <Badge tone={TONE[a.status]}>{a.status}</Badge>
                 </div>
-                {a.status === "failed" && a.result && <p className="mt-1 text-xs text-red-600">{a.result.slice(0, 300)}</p>}
+                {a.status === "failed" && a.result && <p className="mt-1 text-xs text-red-400">{a.result.slice(0, 300)}</p>}
               </li>
             ))}
           </ul>

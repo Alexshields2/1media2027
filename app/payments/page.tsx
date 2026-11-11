@@ -65,17 +65,17 @@ export default async function PaymentsPage({ searchParams }: { searchParams: Pro
                     <Link href={`/clients/${client.id}`} className="font-medium hover:underline">
                       {client.name}
                     </Link>
-                    <div className="text-xs text-black/50">{p.method ?? client.billingMethod}</div>
+                    <div className="text-xs text-ink/50">{p.method ?? client.billingMethod}</div>
                   </td>
-                  <td className="px-4 py-2.5 text-black/70">{p.label}</td>
+                  <td className="px-4 py-2.5 text-ink/70">{p.label}</td>
                   <td className="num px-4 py-2.5">{eur(p.amountDue)}</td>
                   <td className="num px-4 py-2.5">
                     {eur(p.amountCollected)}
-                    {p.paidDate && <div className="text-xs text-black/50">{p.paidDate}</div>}
+                    {p.paidDate && <div className="text-xs text-ink/50">{p.paidDate}</div>}
                   </td>
                   <td className="px-4 py-2.5">
                     <Badge tone={STATE_TONE[s]}>{s}</Badge>
-                    {p.notes && <div className="mt-1 max-w-48 text-xs whitespace-pre-line text-black/50">{p.notes}</div>}
+                    {p.notes && <div className="mt-1 max-w-48 text-xs whitespace-pre-line text-ink/50">{p.notes}</div>}
                   </td>
                   <td className="px-4 py-2.5">
                     {s !== "paid" && (
