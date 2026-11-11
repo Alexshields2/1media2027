@@ -4,6 +4,7 @@ import { and, desc, eq, gte, inArray, ne, sql as dsql } from "drizzle-orm";
 import { db, schema } from "../db";
 import { recordPayment, paymentState, round2 } from "./billing";
 import { today, weekStart } from "./dates";
+import { deriveMetrics, periodFor } from "./report-metrics";
 
 // Tools that let agents read and write the 1Media OS database.
 // Names start with OS_ so the guardrails treat them as internal.
@@ -11,7 +12,12 @@ import { today, weekStart } from "./dates";
 interface OsTool {
   def: Anthropic.Tool;
   input: z.ZodType;
-  run: (input: any) => Promise<unknown>;
+  run: (input: any, ctx: OsToolContext) => Promise<unknown>;
+}
+
+export interface OsToolContext {
+  /** The agent run making the call (linked from saved reports). */
+  runId?: number;
 }
 
 const id = z.coerce.number().int().positive();
@@ -241,17 +247,20 @@ const tools: Record<string, OsTool> = {
   OS_SAVE_REPORT: {
     def: {
       name: "OS_SAVE_REPORT",
-      description: "Save a client report draft (weekly WhatsApp message or month-end report) for a human to review and send.",
+      description:
+        "Save a client report draft (weekly WhatsApp message or month-end report) for a human to review and send, with its numbers. Saving again for the same client, kind and period replaces the draft. CPL and CTR are worked out from spend, leads, impressions and clicks.",
       input_schema: {
         type: "object",
         properties: {
           client_id: { type: "integer" },
           kind: { type: "string", enum: ["weekly", "monthly"] },
-          period: { type: "string", description: "Weekly: the Monday the week starts (YYYY-MM-DD). Monthly: YYYY-MM." },
+          period: { type: "string", description: "Weekly: the Monday the reported week started (YYYY-MM-DD). Monthly: YYYY-MM." },
           body: { type: "string", description: "The full report text, exactly as it should be sent." },
-          leads: { type: "integer" },
-          spend: { type: "number" },
-          cpl: { type: "number" },
+          spend: { type: "number", description: "Amount spent in the period, in the client's currency." },
+          leads: { type: "integer", description: "Leads (or the client's main result, e.g. purchases) in the period." },
+          impressions: { type: "integer" },
+          clicks: { type: "integer", description: "Link clicks." },
+          cpl: { type: "number", description: "Only if spend or leads are unknown; otherwise it is computed." },
         },
         required: ["client_id", "kind", "period", "body"],
       },
@@ -259,19 +268,15 @@ const tools: Record<string, OsTool> = {
     input: z.object({
       client_id: id,
       kind: z.enum(["weekly", "monthly"]),
-      period: z.string().min(7),
+      period: z.string().regex(/^\d{4}-\d{2}(-\d{2})?$/),
       body: z.string().min(20),
-      leads: z.number().int().optional(),
-      spend: z.number().optional(),
-      cpl: z.number().optional(),
+      spend: z.number().nonnegative().optional(),
+      leads: z.number().int().nonnegative().optional(),
+      impressions: z.number().int().nonnegative().optional(),
+      clicks: z.number().int().nonnegative().optional(),
+      cpl: z.number().nonnegative().optional(),
     }),
-    run: async (i) => {
-      const [r] = await db
-        .insert(schema.reports)
-        .values({ clientId: i.client_id, kind: i.kind, period: i.period, body: i.body, leads: i.leads, spend: i.spend, cpl: i.cpl })
-        .returning({ id: schema.reports.id });
-      return { ok: true, report_id: r.id };
-    },
+    run: async (i, ctx) => saveReport({ ...i, run_id: ctx.runId }),
   },
 
   OS_LIST_REPORTS: {
@@ -298,6 +303,49 @@ const tools: Record<string, OsTool> = {
   },
 };
 
+/** Creates or replaces the draft for (client, kind, period). A report already marked sent is never overwritten. */
+export async function saveReport(i: {
+  client_id: number;
+  kind: "weekly" | "monthly";
+  period: string;
+  body: string;
+  spend?: number;
+  leads?: number;
+  impressions?: number;
+  clicks?: number;
+  cpl?: number;
+  run_id?: number;
+}) {
+  const p = periodFor(i.kind, i.period);
+  const m = deriveMetrics(i);
+  const values = {
+    clientId: i.client_id,
+    kind: i.kind,
+    period: p.period,
+    periodStart: p.start,
+    periodEnd: p.end,
+    body: i.body,
+    ...m,
+    runId: i.run_id,
+    updatedAt: new Date(),
+  };
+  const [existing] = await db
+    .select({ id: schema.reports.id, status: schema.reports.status })
+    .from(schema.reports)
+    .where(and(eq(schema.reports.clientId, i.client_id), eq(schema.reports.kind, i.kind), eq(schema.reports.period, p.period)))
+    .orderBy(desc(schema.reports.createdAt))
+    .limit(1);
+  if (existing?.status === "sent") {
+    return { ok: false, report_id: existing.id, error: "That report was already sent to the client, so it was not replaced." };
+  }
+  if (existing) {
+    await db.update(schema.reports).set(values).where(eq(schema.reports.id, existing.id));
+    return { ok: true, report_id: existing.id, replaced: true, ...m };
+  }
+  const [r] = await db.insert(schema.reports).values(values).returning({ id: schema.reports.id });
+  return { ok: true, report_id: r.id, ...m };
+}
+
 export function osToolDefs(names?: string[]): Anthropic.Tool[] {
   return Object.values(tools)
     .filter((t) => !names || names.includes(t.def.name))
@@ -309,12 +357,12 @@ export function isOsTool(name: string): boolean {
 }
 
 /** Validates the input, runs the tool and returns a JSON string for the model. */
-export async function runOsTool(name: string, rawInput: unknown): Promise<string> {
+export async function runOsTool(name: string, rawInput: unknown, ctx: OsToolContext = {}): Promise<string> {
   const t = tools[name];
   if (!t) throw new Error(`Unknown OS tool ${name}`);
   const parsed = t.input.safeParse(rawInput ?? {});
   if (!parsed.success) throw new Error(`Invalid input for ${name}: ${parsed.error.message}`);
-  return JSON.stringify(await t.run(parsed.data));
+  return JSON.stringify(await t.run(parsed.data, ctx));
 }
 
 export const ALL_OS_TOOLS = Object.keys(tools);

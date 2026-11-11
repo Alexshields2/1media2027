@@ -2,7 +2,9 @@ import "../src/config";
 import { eq } from "drizzle-orm";
 import { db, schema, closeDb } from "../src/db";
 import { generateMonth } from "../src/lib/billing";
-import { addMonths, monthStart, weekStart, today } from "../src/lib/dates";
+import { addMonths, eur, monthStart, weekStart, today } from "../src/lib/dates";
+import { metaInsights, metaLeadCount } from "../src/lib/fixtures/ads-fixtures";
+import { reportWeek, shiftWeek, weekPeriod, deriveMetrics } from "../src/lib/report-metrics";
 
 // Fills an EMPTY database with made-up demo data so you can click around.
 //   npm run seed:demo
@@ -17,9 +19,9 @@ async function main() {
   const clients = await db
     .insert(schema.clients)
     .values([
-      { name: "Demo Paving Co", industry: "Paving", retainerExVat: 1500, vat: "plus", billingMethod: "stripe", cplTarget: 15, contactName: "Pat", email: "pat@example.com", startDate: "2026-03-01" },
-      { name: "Demo Attic Conversions", industry: "Attics", retainerExVat: 3000, vat: "plus", billingMethod: "invoice", cplTarget: 10, contactName: "Mary", email: "mary@example.com", startDate: "2026-01-01" },
-      { name: "Demo Bathrooms", industry: "Bathrooms", retainerExVat: 406.5, vat: "inc", billingMethod: "invoice", cplTarget: 15, contactName: "John", email: "john@example.com", startDate: "2026-05-01", reportRules: "Do NOT list leads. Give totals only." },
+      { name: "Demo Paving Co", metaAdAccountIds: "act_1001", ghlLocationId: "loc_paving", driveFolderId: "drive_demo_paving", industry: "Paving", retainerExVat: 1500, vat: "plus", billingMethod: "stripe", cplTarget: 15, contactName: "Pat", email: "pat@example.com", startDate: "2026-03-01" },
+      { name: "Demo Attic Conversions", metaAdAccountIds: "act_2001, act_2002", ghlLocationId: "loc_attics", industry: "Attics", retainerExVat: 3000, vat: "plus", billingMethod: "invoice", cplTarget: 10, contactName: "Mary", email: "mary@example.com", startDate: "2026-01-01" },
+      { name: "Demo Bathrooms", metaAdAccountIds: "act_3001", ghlLocationId: "loc_bathrooms", industry: "Bathrooms", retainerExVat: 406.5, vat: "inc", billingMethod: "invoice", cplTarget: 15, contactName: "John", email: "john@example.com", startDate: "2026-05-01", reportRules: "Do NOT list leads. Give totals only." },
       { name: "Demo Garden Rooms", industry: "Garden rooms", retainerExVat: 900, vat: "plus", billingMethod: "revolut", cplTarget: 12, contactName: "Aoife", email: "aoife@example.com", status: "onboarding", startDate: today() },
     ])
     .returning();
@@ -47,15 +49,33 @@ async function main() {
     { clientId: clients[2].id, weekOf: weekStart(), status: "red", cpl: 31, leads: 6, spend: 186, issue: "Leads Not Worked", reason: "5 of 6 leads untouched in GHL after 3 days.", actionNeeded: "Call John today and go through each lead." },
   ]);
 
-  await db.insert(schema.reports).values({
-    clientId: clients[1].id,
-    kind: "weekly",
-    period: weekStart(),
-    leads: 44,
-    spend: 392,
-    cpl: 8.9,
-    body: "Hi guys, this is how we got on last week.\n\nLeads: 44\nAmount spent: €392\nCost per lead: €8.90\nImpressions: 41,220\nLink clicks: 612\n\nA strong week: cost per lead is under target and volume is up. We're adding two new ad angles this week.\n\nWhat we got done this week:\nNew lead form live\n\nStill to do:\nLong-term nurture flow\nWe will get these ticked off today.\n\nJamie",
-  });
+  // Five weeks of sent weekly reports with numbers (from the same fixtures the mocked agent reads),
+  // so trends and the month-end PDF have data. The latest week is left for the Monday run.
+  const history = [];
+  for (const c of clients.filter((x) => x.metaAdAccountIds)) {
+    for (let w = 5; w >= 1; w--) {
+      const p = weekPeriod(shiftWeek(reportWeek().period, -w));
+      const rows = c.metaAdAccountIds!.split(",").flatMap((a) => metaInsights(a.trim(), p.start, p.end).data);
+      const m = deriveMetrics({
+        spend: rows.reduce((n, r) => n + Number(r.spend), 0),
+        leads: metaLeadCount(rows),
+        impressions: rows.reduce((n, r) => n + Number(r.impressions), 0),
+        clicks: rows.reduce((n, r) => n + Number(r.inline_link_clicks), 0),
+      });
+      history.push({
+        clientId: c.id,
+        kind: "weekly" as const,
+        period: p.period,
+        periodStart: p.start,
+        periodEnd: p.end,
+        ...m,
+        status: "sent" as const,
+        sentAt: new Date(`${shiftWeek(p.period, 1)}T10:00:00Z`),
+        body: `${c.reportGreeting}, this is how we got on last week.\n\nLeads: ${m.leads}\nAmount spent: ${eur(m.spend)}\nCost per lead: ${eur(m.cpl)}\nImpressions: ${m.impressions}\nLink clicks: ${m.clicks}\n\nA steady week.\n\nJamie`,
+      });
+    }
+  }
+  await db.insert(schema.reports).values(history);
 
   console.log(`Seeded ${clients.length} demo clients.`);
 }

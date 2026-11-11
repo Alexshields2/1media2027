@@ -11,7 +11,7 @@ The operating system for 1Media: clients, cash, delivery and the AI agents that 
 | **Payments** | One row per client per month, generated from the retainer. Record payments in one click; Stripe payments are recorded automatically |
 | **Tasks** | Board (to do / in progress / review / done), filtered by client. Agents add tasks too |
 | **Client health** | Weekly traffic light per client, with a 6-week history |
-| **Reports** | Weekly WhatsApp reports and month-end reports written by the agents: edit, copy, mark sent |
+| **Reports** | Per-client week view: spend, leads, CPL, impressions, clicks and CTR with week-on-week change, the WhatsApp-ready text (copy for WhatsApp, mark sent), and a run-status strip with a Retry button per client. Month-end view with a PDF per client (download, or saved to the client's Drive folder) |
 | **Approvals** | Anything an agent wants to send, charge or change outside the OS waits here. Approve runs it; reject drops it |
 | **Agents** | Run any agent now (dry run by default) and read every run's summary and tool calls |
 
@@ -20,8 +20,8 @@ The operating system for 1Media: clients, cash, delivery and the AI agents that 
 | Agent | When | Does |
 |---|---|---|
 | Finance | Weekdays 08:00 | Matches Stripe payments to retainers, flags overdue clients, drafts chasers, sends a Friday cash summary |
-| Weekly reports | Mondays 07:00 | Every client's WhatsApp report from Meta Ads, leads and tasks |
-| Month-end reports | 1st, 09:00 | One executive report per client from the month's data |
+| Weekly reports | Mondays 07:00 | Every client's WhatsApp report from Meta Ads, leads and tasks, with the numbers saved |
+| Month-end reports | 1st, 09:00 | One executive report and PDF per client from the month's weekly numbers |
 | Client health | Weekdays 08:30 | CPL against target, lead volume, creative fatigue, leads left untouched in GHL |
 | Inbox | On demand | Sorts Gmail by client, drafts replies, creates tasks |
 | Call prep | On demand | A brief before each client call, with every lead by name |
@@ -30,6 +30,8 @@ The operating system for 1Media: clients, cash, delivery and the AI agents that 
 | Ask Jarvis | On demand | Answers any question about the agency. Read-only |
 
 On the 1st of each month a billing job (no AI) also creates that month's payment rows.
+
+**Reports run one client at a time.** The weekly and month-end crons don't run one agent over every client. They create one job per active client and call `/api/cron/report-worker` once per job, so each client gets its own function and its own 300-second limit. A failed client retries up to 3 times; a client whose function timed out is picked up again by the next cron (every cron sweeps the queue). The Reports page shows each client's status with a Retry button. See `src/lib/report-jobs.ts`.
 
 **Safety:**
 - Every agent has a level: read-only, asks before any change, or updates the OS itself and asks before anything external.
@@ -53,6 +55,7 @@ Agents use Claude (Anthropic API). They reach Gmail, Calendar, Drive, Meta Ads, 
 - `COMPOSIO_API_KEY` connects Gmail, Calendar, Meta Ads, GoHighLevel and Stripe for the agents. After adding it, run `npm run connect` and open each login link.
 - `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` record Stripe payments automatically. In Stripe → Developers → Webhooks, add the endpoint `https://<your-app>.vercel.app/api/webhooks/stripe` with the event `invoice.paid`.
 - `SLACK_WEBHOOK_URL` sends agent summaries and approval alerts to Slack.
+- Month-end PDFs go to each client's Drive folder when Composio has Google Drive connected and the client record has a **Google Drive folder ID**. Otherwise download them from Reports.
 - `AGENTS_PAUSED=true` pauses every scheduled agent.
 
 **Notes:**
@@ -107,6 +110,18 @@ npm test
 npm run agent -- finance --dry-run
 ```
 
+To try the reporting loop without API keys, set `AGENTS_MOCK=true` (a scripted model with fixture Meta Ads and GoHighLevel data; ignored in production), then run this week's reports for every client:
+
+```bash
+AGENTS_MOCK=true npm run agent -- reports weekly
+```
+
+The reporting-loop tests need a throwaway Postgres database (every table in it is emptied):
+
+```bash
+TEST_DATABASE_URL=postgres://localhost/onemedia_test npm run test:db
+```
+
 ## Code map
 
 ```
@@ -118,6 +133,9 @@ src/lib/guardrails.ts   what each agent may do on its own
 src/lib/os-tools.ts     tools that let agents read and write the OS database
 src/lib/approvals.ts    runs approved actions
 src/lib/billing.ts      VAT, monthly rows, payment state, totals
+src/lib/report-jobs.ts  per-client report jobs: enqueue, fan-out, retries, sweep
+src/lib/report-pdf.ts   month-end PDF (pdf-lib, no browser needed)
+src/lib/mock-agents.ts  scripted model + fixture Meta Ads/GHL tools (tests, AGENTS_MOCK)
 src/agents/             one folder per agent: settings and playbook
 drizzle/                database migrations
 scripts/                demo seed, Notion import, Composio connect

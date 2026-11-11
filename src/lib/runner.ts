@@ -12,6 +12,17 @@ import { notify } from "./slack";
 import { houseRules } from "../agents/house-rules";
 import type { AgentDefinition, AgentContext } from "../agents/types";
 
+/** AGENTS_MOCK=true swaps the model and Meta/GHL for scripted fixtures (local demos and previews; never production). */
+export function mockModeEnabled(): boolean {
+  return process.env.AGENTS_MOCK === "true" && process.env.VERCEL_ENV !== "production";
+}
+
+async function mockDepsIfEnabled(): Promise<RunDeps | undefined> {
+  if (!mockModeEnabled()) return undefined;
+  const { mockDeps } = await import("./mock-agents");
+  return mockDeps();
+}
+
 /** House rules + the agent's own prompt. Kept stable (no dates) so it caches across runs. */
 function systemPrompt(agent: AgentDefinition, autonomy: Autonomy): string {
   return [
@@ -21,15 +32,55 @@ function systemPrompt(agent: AgentDefinition, autonomy: Autonomy): string {
   ].join("\n\n---\n\n");
 }
 
+/** The one Messages API call the runner makes. Swappable so tests (and AGENTS_MOCK) can script the model. */
+export interface ModelClient {
+  create(params: Anthropic.Beta.MessageCreateParamsNonStreaming): Promise<Anthropic.Beta.BetaMessage>;
+}
+
+/** External (non-OS) tools: Composio in production, fixtures in tests. */
+export interface ExternalTools {
+  defs: Anthropic.Beta.BetaToolUnion[];
+  execute(name: string, input: Record<string, unknown>, callId: string): Promise<string>;
+}
+
+export interface RunDeps {
+  model?: ModelClient;
+  external?: ExternalTools;
+}
+
 export interface RunOptions {
   dryRun?: boolean;
   instruction?: string;
   trigger?: AgentRun["trigger"];
+  /** Scope the run to one client (per-client report jobs). */
+  client?: AgentContext["client"];
+  /** The reporting period for report agents. */
+  period?: AgentContext["period"];
+  /** Epoch ms. No new model turn starts after this, so the run is saved before the function is killed. */
+  deadline?: number;
+  deps?: RunDeps;
+}
+
+function defaultModel(): ModelClient {
+  requireEnv("ANTHROPIC_API_KEY");
+  const client = new Anthropic();
+  return { create: (params) => client.beta.messages.create(params) };
+}
+
+async function composioTools(agent: AgentDefinition): Promise<ExternalTools> {
+  const defs = (await loadComposioTools({ toolkits: agent.toolkits, tools: agent.tools })) as Anthropic.Beta.BetaToolUnion[];
+  return {
+    defs,
+    execute: (name, input, callId) => {
+      const toolUse: AnthropicToolUseBlock = { type: "tool_use", id: callId, name, input };
+      return composio().provider.executeToolCall(config.composioUserId, toolUse);
+    },
+  };
 }
 
 export async function runAgent(agent: AgentDefinition, opts: RunOptions = {}): Promise<AgentRun> {
   const autonomy: Autonomy = opts.dryRun ? "L0" : agent.autonomy;
-  const ctx: AgentContext = { today: today(), instruction: opts.instruction };
+  const ctx: AgentContext = { today: today(), instruction: opts.instruction, client: opts.client, period: opts.period };
   const task = agent.task(ctx) + (ctx.instruction ? `\n\nExtra instruction for this run: ${ctx.instruction}` : "");
 
   const [run] = await db
@@ -43,16 +94,21 @@ export async function runAgent(agent: AgentDefinition, opts: RunOptions = {}): P
   let status: AgentRun["status"] = "completed";
 
   try {
-    requireEnv("ANTHROPIC_API_KEY");
-    const client = new Anthropic();
-    const composioTools = await loadComposioTools({ toolkits: agent.toolkits, tools: agent.tools });
-    const tools = [...osToolDefs(agent.osTools ?? ALL_OS_TOOLS), ...composioTools] as Anthropic.Beta.BetaToolUnion[];
+    const deps = opts.deps ?? (await mockDepsIfEnabled());
+    const model = deps?.model ?? defaultModel();
+    const external = deps?.external ?? (await composioTools(agent));
+    const tools = [...osToolDefs(agent.osTools ?? ALL_OS_TOOLS), ...external.defs] as Anthropic.Beta.BetaToolUnion[];
     const system = systemPrompt(agent, autonomy);
-    const note = composioEnabled() ? "" : "\n\n(Note: external apps such as Gmail, Meta Ads, HighLevel and Stripe are not connected yet. Work with the 1Media OS database only, and say what you could not check.)";
+    const note = external.defs.length || composioEnabled() ? "" : "\n\n(Note: external apps such as Gmail, Meta Ads, HighLevel and Stripe are not connected yet. Work with the 1Media OS database only, and say what you could not check.)";
     const messages: Anthropic.Beta.BetaMessageParam[] = [{ role: "user", content: task + note }];
 
     for (let turn = 0; turn < agent.maxTurns; turn++) {
-      const res = await client.beta.messages.create({
+      if (opts.deadline && Date.now() > opts.deadline) {
+        summary = `Run stopped: out of time after ${turn} turns (per-run time budget).`;
+        status = "stopped";
+        break;
+      }
+      const res = await model.create({
         model: MODEL,
         max_tokens: 16000,
         system: [{ type: "text", text: system, cache_control: { type: "ephemeral" } }],
@@ -90,7 +146,7 @@ export async function runAgent(agent: AgentDefinition, opts: RunOptions = {}): P
 
       const calls = res.content.filter((b): b is Anthropic.Beta.BetaToolUseBlock => b.type === "tool_use");
       // Run the calls in parallel, then return every result in one user message.
-      const results = await Promise.all(calls.map((c) => handleCall(c, agent, autonomy, run.id, events)));
+      const results = await Promise.all(calls.map((c) => handleCall(c, agent, autonomy, run.id, events, external)));
       messages.push({ role: "user", content: results });
     }
 
@@ -137,6 +193,7 @@ async function handleCall(
   autonomy: Autonomy,
   runId: number,
   events: ToolEvent[],
+  external: ExternalTools,
 ): Promise<Anthropic.Beta.BetaToolResultBlockParam> {
   const input = (call.input ?? {}) as Record<string, unknown>;
   const d = decide(call.name, autonomy, agent.allow);
@@ -163,10 +220,9 @@ async function handleCall(
   try {
     let out: string;
     if (isOsTool(call.name)) {
-      out = await runOsTool(call.name, input);
+      out = await runOsTool(call.name, input, { runId });
     } else {
-      const toolUse: AnthropicToolUseBlock = { type: "tool_use", id: call.id, name: call.name, input };
-      out = await composio().provider.executeToolCall(config.composioUserId, toolUse);
+      out = await external.execute(call.name, input, call.id);
     }
     event.result = out.length > 2000 ? out.slice(0, 2000) + "…[truncated in log only]" : out;
     return { type: "tool_result", tool_use_id: call.id, content: out };

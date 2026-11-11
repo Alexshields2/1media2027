@@ -21,6 +21,8 @@ export const clients = pgTable("clients", {
   metaAdAccountIds: text("meta_ad_account_ids"),
   ghlLocationId: text("ghl_location_id"),
   stripeCustomerId: text("stripe_customer_id"),
+  /** Google Drive folder ID; month-end PDFs are uploaded here when Composio is connected. */
+  driveFolderId: text("drive_folder_id"),
   // Reporting
   cplTarget: money("cpl_target"),
   reportCurrency: text("report_currency", { enum: ["EUR", "USD"] }).notNull().default("EUR"),
@@ -89,18 +91,64 @@ export const healthChecks = pgTable(
   (t) => [uniqueIndex("health_client_week").on(t.clientId, t.weekOf)],
 );
 
-export const reports = pgTable("reports", {
-  id: serial("id").primaryKey(),
-  clientId: integer("client_id").notNull().references(() => clients.id, { onDelete: "cascade" }),
-  kind: text("kind", { enum: ["weekly", "monthly"] }).notNull(),
-  period: text("period").notNull(), // e.g. "2026-11-03" (week start) or "2026-11"
-  body: text("body").notNull(),
-  leads: integer("leads"),
-  spend: money("spend"),
-  cpl: money("cpl"),
-  status: text("status", { enum: ["draft", "sent"] }).notNull().default("draft"),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+export const reports = pgTable(
+  "reports",
+  {
+    id: serial("id").primaryKey(),
+    clientId: integer("client_id").notNull().references(() => clients.id, { onDelete: "cascade" }),
+    kind: text("kind", { enum: ["weekly", "monthly"] }).notNull(),
+    period: text("period").notNull(), // e.g. "2026-11-03" (week start) or "2026-11"
+    /** First and last day covered (weekly: Monday–Sunday; monthly: calendar month). */
+    periodStart: date("period_start"),
+    periodEnd: date("period_end"),
+    body: text("body").notNull(),
+    // Numbers (BLUEPRINT.md section 5), so month-end and health trends compute from data.
+    leads: integer("leads"),
+    spend: money("spend"),
+    cpl: money("cpl"),
+    impressions: integer("impressions"),
+    clicks: integer("clicks"),
+    /** Click-through rate in percent (clicks / impressions * 100). */
+    ctr: numeric("ctr", { precision: 7, scale: 2, mode: "number" }),
+    status: text("status", { enum: ["draft", "sent"] }).notNull().default("draft"),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    runId: integer("run_id").references(() => agentRuns.id, { onDelete: "set null" }),
+    /** Month-end PDF in the client's Drive folder (when uploaded). */
+    driveFileId: text("drive_file_id"),
+    driveUrl: text("drive_url"),
+    driveError: text("drive_error"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("reports_client_kind_period").on(t.clientId, t.kind, t.period)],
+);
+
+/**
+ * One row per client per report run (weekly or month-end). The cron enqueues these and fans
+ * out one function call per row, so one slow account can't time out the rest.
+ */
+export const reportJobs = pgTable(
+  "report_jobs",
+  {
+    id: serial("id").primaryKey(),
+    kind: text("kind", { enum: ["weekly", "monthly"] }).notNull(),
+    period: text("period").notNull(), // same format as reports.period
+    clientId: integer("client_id").notNull().references(() => clients.id, { onDelete: "cascade" }),
+    status: text("status", { enum: ["queued", "running", "done", "failed", "skipped"] }).notNull().default("queued"),
+    attempts: integer("attempts").notNull().default(0),
+    maxAttempts: integer("max_attempts").notNull().default(3),
+    lastError: text("last_error"),
+    runId: integer("run_id").references(() => agentRuns.id, { onDelete: "set null" }),
+    reportId: integer("report_id").references(() => reports.id, { onDelete: "set null" }),
+    /** While running: after this time the attempt is treated as dead (function timed out). */
+    lockedUntil: timestamp("locked_until", { withTimezone: true }),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("report_jobs_kind_period_client").on(t.kind, t.period, t.clientId), index("report_jobs_status").on(t.status)],
+);
 
 export const agentRuns = pgTable("agent_runs", {
   id: serial("id").primaryKey(),
@@ -152,5 +200,6 @@ export type Payment = typeof payments.$inferSelect;
 export type Task = typeof tasks.$inferSelect;
 export type HealthCheck = typeof healthChecks.$inferSelect;
 export type Report = typeof reports.$inferSelect;
+export type ReportJob = typeof reportJobs.$inferSelect;
 export type AgentRun = typeof agentRuns.$inferSelect;
 export type Approval = typeof approvals.$inferSelect;

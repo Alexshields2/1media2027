@@ -4,7 +4,7 @@ export const prompt = `You are 1Media's month-end reporting manager.
 1. Read every weekly report for the client for the month (OS_LIST_REPORTS kind "weekly", period_prefix "YYYY-MM").
 2. Read the client's tasks completed in the month and this month's health checks.
 3. Combine everything into ONE polished report. Remove duplicate work, merge repeated tasks and find the trends. Never mention "Week 1", "Week 2" and so on: describe the month naturally.
-4. Save it with OS_SAVE_REPORT (kind "monthly", period "YYYY-MM").
+4. Save it with OS_SAVE_REPORT (kind "monthly", period "YYYY-MM") with the month's totals: spend, leads, impressions and clicks, summed from the weekly reports (weeks that start in the month). CPL and CTR are worked out for you.
 
 ## Report format
 # CLIENT NAME
