@@ -1,0 +1,245 @@
+[
+ {
+  "object": "list",
+  "results": [
+   {
+    "object": "page",
+    "id": "b1000000-0000-4000-8000-000000000014",
+    "created_time": "2026-01-05T10:00:00.000Z",
+    "last_edited_time": "2026-11-01T10:00:00.000Z",
+    "archived": false,
+    "in_trash": false,
+    "parent": {
+     "type": "data_source_id",
+     "data_source_id": "51b99f9e-6c93-4e48-8208-2f7b8de6752d"
+    },
+    "properties": {
+     "Name": {
+      "id": "title",
+      "type": "title",
+      "title": [
+       {
+        "type": "text",
+        "text": {
+         "content": "Oakline Attic Conversions.",
+         "link": null
+        },
+        "plain_text": "Oakline Attic Conversions.",
+        "href": null,
+        "annotations": {}
+       }
+      ]
+     },
+     "Client Name:": {
+      "type": "rich_text",
+      "rich_text": [
+       {
+        "type": "text",
+        "text": {
+         "content": "Tracking pixel fixed in Oct",
+         "link": null
+        },
+        "plain_text": "Tracking pixel fixed in Oct",
+        "href": null,
+        "annotations": {}
+       }
+      ]
+     },
+     "Reporting Notes.": {
+      "type": "rich_text",
+      "rich_text": [
+       {
+        "type": "text",
+        "text": {
+         "content": "Report attic and dormer campaigns separately.",
+         "link": null
+        },
+        "plain_text": "Report attic and dormer campaigns separately.",
+        "href": null,
+        "annotations": {}
+       }
+      ]
+     },
+     "Website.": {
+      "type": "rich_text",
+      "rich_text": [
+       {
+        "type": "text",
+        "text": {
+         "content": "https://oakline-attics.example",
+         "link": null
+        },
+        "plain_text": "https://oakline-attics.example",
+        "href": null,
+        "annotations": {}
+       }
+      ]
+     },
+     "active": {
+      "type": "select",
+      "select": {
+       "id": "x",
+       "name": "active",
+       "color": "default"
+      }
+     },
+     "Client": {
+      "type": "relation",
+      "relation": [
+       {
+        "id": "z9000000-0000-4000-8000-000000000015"
+       }
+      ],
+      "has_more": false
+     }
+    },
+    "url": "https://www.notion.so/b1000000000040008000000000000014"
+   },
+   {
+    "object": "page",
+    "id": "b1000000-0000-4000-8000-000000000016",
+    "created_time": "2026-01-05T10:00:00.000Z",
+    "last_edited_time": "2026-11-01T10:00:00.000Z",
+    "archived": false,
+    "in_trash": false,
+    "parent": {
+     "type": "data_source_id",
+     "data_source_id": "51b99f9e-6c93-4e48-8208-2f7b8de6752d"
+    },
+    "properties": {
+     "Name": {
+      "id": "title",
+      "type": "title",
+      "title": [
+       {
+        "type": "text",
+        "text": {
+         "content": "Brightwater Bathrooms Ltd",
+         "link": null
+        },
+        "plain_text": "Brightwater Bathrooms Ltd",
+        "href": null,
+        "annotations": {}
+       }
+      ]
+     },
+     "Client Name:": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Reporting Notes.": {
+      "type": "rich_text",
+      "rich_text": [
+       {
+        "type": "text",
+        "text": {
+         "content": "Totals only, no lead names.",
+         "link": null
+        },
+        "plain_text": "Totals only, no lead names.",
+        "href": null,
+        "annotations": {}
+       }
+      ]
+     },
+     "Website.": {
+      "type": "rich_text",
+      "rich_text": [
+       {
+        "type": "text",
+        "text": {
+         "content": "https://brightwater-bath.example",
+         "link": null
+        },
+        "plain_text": "https://brightwater-bath.example",
+        "href": null,
+        "annotations": {}
+       }
+      ]
+     },
+     "active": {
+      "type": "select",
+      "select": {
+       "id": "x",
+       "name": "active",
+       "color": "default"
+      }
+     },
+     "Client": {
+      "type": "relation",
+      "relation": [],
+      "has_more": false
+     }
+    },
+    "url": "https://www.notion.so/b1000000000040008000000000000016"
+   },
+   {
+    "object": "page",
+    "id": "b1000000-0000-4000-8000-000000000017",
+    "created_time": "2026-01-05T10:00:00.000Z",
+    "last_edited_time": "2026-11-01T10:00:00.000Z",
+    "archived": false,
+    "in_trash": false,
+    "parent": {
+     "type": "data_source_id",
+     "data_source_id": "51b99f9e-6c93-4e48-8208-2f7b8de6752d"
+    },
+    "properties": {
+     "Name": {
+      "id": "title",
+      "type": "title",
+      "title": [
+       {
+        "type": "text",
+        "text": {
+         "content": "Lakeside Landscaping",
+         "link": null
+        },
+        "plain_text": "Lakeside Landscaping",
+        "href": null,
+        "annotations": {}
+       }
+      ]
+     },
+     "Client Name:": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Reporting Notes.": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Website.": {
+      "type": "rich_text",
+      "rich_text": [
+       {
+        "type": "text",
+        "text": {
+         "content": "https://lakeside-landscaping.example",
+         "link": null
+        },
+        "plain_text": "https://lakeside-landscaping.example",
+        "href": null,
+        "annotations": {}
+       }
+      ]
+     },
+     "active": {
+      "type": "select",
+      "select": null
+     },
+     "Client": {
+      "type": "relation",
+      "relation": [],
+      "has_more": false
+     }
+    },
+    "url": "https://www.notion.so/b1000000000040008000000000000017"
+   }
+  ],
+  "next_cursor": null,
+  "has_more": false,
+  "type": "page_or_data_source",
+  "page_or_data_source": {}
+ }
+]

@@ -1,0 +1,2357 @@
+[
+ {
+  "object": "list",
+  "results": [
+   {
+    "object": "page",
+    "id": "d1000000-0000-4000-8000-000000000018",
+    "created_time": "2026-01-05T10:00:00.000Z",
+    "last_edited_time": "2026-11-01T10:00:00.000Z",
+    "archived": false,
+    "in_trash": false,
+    "parent": {
+     "type": "data_source_id",
+     "data_source_id": "1596ffdf-32f4-441c-b673-6bb8dd6c43af"
+    },
+    "properties": {
+     "Payment": {
+      "id": "title",
+      "type": "title",
+      "title": [
+       {
+        "type": "text",
+        "text": {
+         "content": "Greenfield Paving – Sep",
+         "link": null
+        },
+        "plain_text": "Greenfield Paving – Sep",
+        "href": null,
+        "annotations": {}
+       }
+      ]
+     },
+     "Client": {
+      "type": "relation",
+      "relation": [
+       {
+        "id": "a1000000-0000-4000-8000-000000000001"
+       }
+      ],
+      "has_more": false
+     },
+     "Due Date": {
+      "type": "date",
+      "date": {
+       "start": "2026-09-01",
+       "end": null,
+       "time_zone": null
+      }
+     },
+     "Amount Due": {
+      "type": "number",
+      "number": 1722
+     },
+     "Amount Collected": {
+      "type": "number",
+      "number": null
+     },
+     "Paid": {
+      "type": "checkbox",
+      "checkbox": false
+     },
+     "Date Paid": {
+      "type": "date",
+      "date": null
+     },
+     "Method": {
+      "type": "select",
+      "select": {
+       "id": "x",
+       "name": "Stripe",
+       "color": "default"
+      }
+     },
+     "Notes": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Retainer (ex VAT)": {
+      "type": "number",
+      "number": 1400
+     },
+     "VAT": {
+      "type": "select",
+      "select": {
+       "id": "x",
+       "name": "Plus VAT",
+       "color": "default"
+      }
+     },
+     "Outstanding": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Collected This Month": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Collected This Week": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Outstanding This Month": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Outstanding This Week": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Month": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Year": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Week": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Quarter": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Paid In": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Late Payment": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     }
+    },
+    "url": "https://www.notion.so/d1000000000040008000000000000018"
+   },
+   {
+    "object": "page",
+    "id": "d1000000-0000-4000-8000-000000000019",
+    "created_time": "2026-01-05T10:00:00.000Z",
+    "last_edited_time": "2026-11-01T10:00:00.000Z",
+    "archived": false,
+    "in_trash": false,
+    "parent": {
+     "type": "data_source_id",
+     "data_source_id": "1596ffdf-32f4-441c-b673-6bb8dd6c43af"
+    },
+    "properties": {
+     "Payment": {
+      "id": "title",
+      "type": "title",
+      "title": [
+       {
+        "type": "text",
+        "text": {
+         "content": "Greenfield Paving – Oct",
+         "link": null
+        },
+        "plain_text": "Greenfield Paving – Oct",
+        "href": null,
+        "annotations": {}
+       }
+      ]
+     },
+     "Client": {
+      "type": "relation",
+      "relation": [
+       {
+        "id": "a1000000-0000-4000-8000-000000000001"
+       }
+      ],
+      "has_more": false
+     },
+     "Due Date": {
+      "type": "date",
+      "date": {
+       "start": "2026-10-01",
+       "end": null,
+       "time_zone": null
+      }
+     },
+     "Amount Due": {
+      "type": "number",
+      "number": 1722
+     },
+     "Amount Collected": {
+      "type": "number",
+      "number": 1722
+     },
+     "Paid": {
+      "type": "checkbox",
+      "checkbox": true
+     },
+     "Date Paid": {
+      "type": "date",
+      "date": {
+       "start": "2026-10-03",
+       "end": null,
+       "time_zone": null
+      }
+     },
+     "Method": {
+      "type": "select",
+      "select": {
+       "id": "x",
+       "name": "Stripe",
+       "color": "default"
+      }
+     },
+     "Notes": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Retainer (ex VAT)": {
+      "type": "number",
+      "number": 1400
+     },
+     "VAT": {
+      "type": "select",
+      "select": {
+       "id": "x",
+       "name": "Plus VAT",
+       "color": "default"
+      }
+     },
+     "Outstanding": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Collected This Month": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Collected This Week": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Outstanding This Month": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Outstanding This Week": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Month": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Year": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Week": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Quarter": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Paid In": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Late Payment": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     }
+    },
+    "url": "https://www.notion.so/d1000000000040008000000000000019"
+   },
+   {
+    "object": "page",
+    "id": "d1000000-0000-4000-8000-000000000020",
+    "created_time": "2026-01-05T10:00:00.000Z",
+    "last_edited_time": "2026-11-01T10:00:00.000Z",
+    "archived": false,
+    "in_trash": false,
+    "parent": {
+     "type": "data_source_id",
+     "data_source_id": "1596ffdf-32f4-441c-b673-6bb8dd6c43af"
+    },
+    "properties": {
+     "Payment": {
+      "id": "title",
+      "type": "title",
+      "title": [
+       {
+        "type": "text",
+        "text": {
+         "content": "Greenfield Paving – Nov",
+         "link": null
+        },
+        "plain_text": "Greenfield Paving – Nov",
+        "href": null,
+        "annotations": {}
+       }
+      ]
+     },
+     "Client": {
+      "type": "relation",
+      "relation": [
+       {
+        "id": "a1000000-0000-4000-8000-000000000002"
+       }
+      ],
+      "has_more": false
+     },
+     "Due Date": {
+      "type": "date",
+      "date": {
+       "start": "2026-11-01",
+       "end": null,
+       "time_zone": null
+      }
+     },
+     "Amount Due": {
+      "type": "number",
+      "number": 1722
+     },
+     "Amount Collected": {
+      "type": "number",
+      "number": null
+     },
+     "Paid": {
+      "type": "checkbox",
+      "checkbox": true
+     },
+     "Date Paid": {
+      "type": "date",
+      "date": null
+     },
+     "Method": {
+      "type": "select",
+      "select": {
+       "id": "x",
+       "name": "Stripe",
+       "color": "default"
+      }
+     },
+     "Notes": {
+      "type": "rich_text",
+      "rich_text": [
+       {
+        "type": "text",
+        "text": {
+         "content": "Paid by card on the call",
+         "link": null
+        },
+        "plain_text": "Paid by card on the call",
+        "href": null,
+        "annotations": {}
+       }
+      ]
+     },
+     "Retainer (ex VAT)": {
+      "type": "number",
+      "number": 1400
+     },
+     "VAT": {
+      "type": "select",
+      "select": {
+       "id": "x",
+       "name": "Plus VAT",
+       "color": "default"
+      }
+     },
+     "Outstanding": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Collected This Month": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Collected This Week": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Outstanding This Month": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Outstanding This Week": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Month": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Year": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Week": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Quarter": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Paid In": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Late Payment": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     }
+    },
+    "url": "https://www.notion.so/d1000000000040008000000000000020"
+   },
+   {
+    "object": "page",
+    "id": "d1000000-0000-4000-8000-000000000021",
+    "created_time": "2026-01-05T10:00:00.000Z",
+    "last_edited_time": "2026-11-01T10:00:00.000Z",
+    "archived": false,
+    "in_trash": false,
+    "parent": {
+     "type": "data_source_id",
+     "data_source_id": "1596ffdf-32f4-441c-b673-6bb8dd6c43af"
+    },
+    "properties": {
+     "Payment": {
+      "id": "title",
+      "type": "title",
+      "title": [
+       {
+        "type": "text",
+        "text": {
+         "content": "Oakline – Oct",
+         "link": null
+        },
+        "plain_text": "Oakline – Oct",
+        "href": null,
+        "annotations": {}
+       }
+      ]
+     },
+     "Client": {
+      "type": "relation",
+      "relation": [
+       {
+        "id": "a1000000-0000-4000-8000-000000000003"
+       }
+      ],
+      "has_more": false
+     },
+     "Due Date": {
+      "type": "date",
+      "date": {
+       "start": "2026-10-01",
+       "end": null,
+       "time_zone": null
+      }
+     },
+     "Amount Due": {
+      "type": "number",
+      "number": 3690
+     },
+     "Amount Collected": {
+      "type": "number",
+      "number": 3690
+     },
+     "Paid": {
+      "type": "checkbox",
+      "checkbox": true
+     },
+     "Date Paid": {
+      "type": "date",
+      "date": {
+       "start": "2026-10-12",
+       "end": null,
+       "time_zone": null
+      }
+     },
+     "Method": {
+      "type": "select",
+      "select": {
+       "id": "x",
+       "name": "Invoice",
+       "color": "default"
+      }
+     },
+     "Notes": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Retainer (ex VAT)": {
+      "type": "number",
+      "number": 3000
+     },
+     "VAT": {
+      "type": "select",
+      "select": {
+       "id": "x",
+       "name": "Plus VAT",
+       "color": "default"
+      }
+     },
+     "Outstanding": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Collected This Month": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Collected This Week": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Outstanding This Month": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Outstanding This Week": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Month": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Year": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Week": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Quarter": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Paid In": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Late Payment": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     }
+    },
+    "url": "https://www.notion.so/d1000000000040008000000000000021"
+   },
+   {
+    "object": "page",
+    "id": "d1000000-0000-4000-8000-000000000022",
+    "created_time": "2026-01-05T10:00:00.000Z",
+    "last_edited_time": "2026-11-01T10:00:00.000Z",
+    "archived": false,
+    "in_trash": false,
+    "parent": {
+     "type": "data_source_id",
+     "data_source_id": "1596ffdf-32f4-441c-b673-6bb8dd6c43af"
+    },
+    "properties": {
+     "Payment": {
+      "id": "title",
+      "type": "title",
+      "title": [
+       {
+        "type": "text",
+        "text": {
+         "content": "Oakline – Nov",
+         "link": null
+        },
+        "plain_text": "Oakline – Nov",
+        "href": null,
+        "annotations": {}
+       }
+      ]
+     },
+     "Client": {
+      "type": "relation",
+      "relation": [
+       {
+        "id": "a1000000-0000-4000-8000-000000000003"
+       }
+      ],
+      "has_more": false
+     },
+     "Due Date": {
+      "type": "date",
+      "date": {
+       "start": "2026-11-01",
+       "end": null,
+       "time_zone": null
+      }
+     },
+     "Amount Due": {
+      "type": "number",
+      "number": 3690
+     },
+     "Amount Collected": {
+      "type": "number",
+      "number": 1500
+     },
+     "Paid": {
+      "type": "checkbox",
+      "checkbox": false
+     },
+     "Date Paid": {
+      "type": "date",
+      "date": {
+       "start": "2026-11-06",
+       "end": null,
+       "time_zone": null
+      }
+     },
+     "Method": {
+      "type": "select",
+      "select": {
+       "id": "x",
+       "name": "Invoice",
+       "color": "default"
+      }
+     },
+     "Notes": {
+      "type": "rich_text",
+      "rich_text": [
+       {
+        "type": "text",
+        "text": {
+         "content": "Balance promised end of month",
+         "link": null
+        },
+        "plain_text": "Balance promised end of month",
+        "href": null,
+        "annotations": {}
+       }
+      ]
+     },
+     "Retainer (ex VAT)": {
+      "type": "number",
+      "number": 3000
+     },
+     "VAT": {
+      "type": "select",
+      "select": {
+       "id": "x",
+       "name": "Plus VAT",
+       "color": "default"
+      }
+     },
+     "Outstanding": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Collected This Month": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Collected This Week": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Outstanding This Month": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Outstanding This Week": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Month": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Year": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Week": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Quarter": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Paid In": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Late Payment": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     }
+    },
+    "url": "https://www.notion.so/d1000000000040008000000000000022"
+   },
+   {
+    "object": "page",
+    "id": "d1000000-0000-4000-8000-000000000023",
+    "created_time": "2026-01-05T10:00:00.000Z",
+    "last_edited_time": "2026-11-01T10:00:00.000Z",
+    "archived": false,
+    "in_trash": false,
+    "parent": {
+     "type": "data_source_id",
+     "data_source_id": "1596ffdf-32f4-441c-b673-6bb8dd6c43af"
+    },
+    "properties": {
+     "Payment": {
+      "id": "title",
+      "type": "title",
+      "title": [
+       {
+        "type": "text",
+        "text": {
+         "content": "Oakline – Nov (copy)",
+         "link": null
+        },
+        "plain_text": "Oakline – Nov (copy)",
+        "href": null,
+        "annotations": {}
+       }
+      ]
+     },
+     "Client": {
+      "type": "relation",
+      "relation": [
+       {
+        "id": "a1000000-0000-4000-8000-000000000003"
+       }
+      ],
+      "has_more": false
+     },
+     "Due Date": {
+      "type": "date",
+      "date": {
+       "start": "2026-11-01",
+       "end": null,
+       "time_zone": null
+      }
+     },
+     "Amount Due": {
+      "type": "number",
+      "number": 3690
+     },
+     "Amount Collected": {
+      "type": "number",
+      "number": null
+     },
+     "Paid": {
+      "type": "checkbox",
+      "checkbox": false
+     },
+     "Date Paid": {
+      "type": "date",
+      "date": null
+     },
+     "Method": {
+      "type": "select",
+      "select": {
+       "id": "x",
+       "name": "Invoice",
+       "color": "default"
+      }
+     },
+     "Notes": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Retainer (ex VAT)": {
+      "type": "number",
+      "number": 3000
+     },
+     "VAT": {
+      "type": "select",
+      "select": {
+       "id": "x",
+       "name": "Plus VAT",
+       "color": "default"
+      }
+     },
+     "Outstanding": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Collected This Month": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Collected This Week": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Outstanding This Month": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Outstanding This Week": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Month": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Year": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Week": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Quarter": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Paid In": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Late Payment": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     }
+    },
+    "url": "https://www.notion.so/d1000000000040008000000000000023"
+   }
+  ],
+  "next_cursor": "cursor-6",
+  "has_more": true,
+  "type": "page_or_data_source",
+  "page_or_data_source": {}
+ },
+ {
+  "object": "list",
+  "results": [
+   {
+    "object": "page",
+    "id": "d1000000-0000-4000-8000-000000000024",
+    "created_time": "2026-01-05T10:00:00.000Z",
+    "last_edited_time": "2026-11-01T10:00:00.000Z",
+    "archived": false,
+    "in_trash": false,
+    "parent": {
+     "type": "data_source_id",
+     "data_source_id": "1596ffdf-32f4-441c-b673-6bb8dd6c43af"
+    },
+    "properties": {
+     "Payment": {
+      "id": "title",
+      "type": "title",
+      "title": [
+       {
+        "type": "text",
+        "text": {
+         "content": "Brightwater – Nov",
+         "link": null
+        },
+        "plain_text": "Brightwater – Nov",
+        "href": null,
+        "annotations": {}
+       }
+      ]
+     },
+     "Client": {
+      "type": "relation",
+      "relation": [
+       {
+        "id": "a1000000-0000-4000-8000-000000000004"
+       }
+      ],
+      "has_more": false
+     },
+     "Due Date": {
+      "type": "date",
+      "date": {
+       "start": "2026-11-01T09:00:00.000+00:00",
+       "end": null,
+       "time_zone": null
+      }
+     },
+     "Amount Due": {
+      "type": "number",
+      "number": 406.5
+     },
+     "Amount Collected": {
+      "type": "number",
+      "number": null
+     },
+     "Paid": {
+      "type": "checkbox",
+      "checkbox": false
+     },
+     "Date Paid": {
+      "type": "date",
+      "date": null
+     },
+     "Method": {
+      "type": "select",
+      "select": {
+       "id": "x",
+       "name": "Revolut",
+       "color": "default"
+      }
+     },
+     "Notes": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Retainer (ex VAT)": {
+      "type": "number",
+      "number": 406.5
+     },
+     "VAT": {
+      "type": "select",
+      "select": {
+       "id": "x",
+       "name": "Inc VAT",
+       "color": "default"
+      }
+     },
+     "Outstanding": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Collected This Month": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Collected This Week": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Outstanding This Month": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Outstanding This Week": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Month": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Year": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Week": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Quarter": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Paid In": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Late Payment": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     }
+    },
+    "url": "https://www.notion.so/d1000000000040008000000000000024"
+   },
+   {
+    "object": "page",
+    "id": "d1000000-0000-4000-8000-000000000025",
+    "created_time": "2026-01-05T10:00:00.000Z",
+    "last_edited_time": "2026-11-01T10:00:00.000Z",
+    "archived": false,
+    "in_trash": false,
+    "parent": {
+     "type": "data_source_id",
+     "data_source_id": "1596ffdf-32f4-441c-b673-6bb8dd6c43af"
+    },
+    "properties": {
+     "Payment": {
+      "id": "title",
+      "type": "title",
+      "title": [
+       {
+        "type": "text",
+        "text": {
+         "content": "Harbour Windows – Nov",
+         "link": null
+        },
+        "plain_text": "Harbour Windows – Nov",
+        "href": null,
+        "annotations": {}
+       }
+      ]
+     },
+     "Client": {
+      "type": "relation",
+      "relation": [
+       {
+        "id": "a1000000-0000-4000-8000-000000000007"
+       }
+      ],
+      "has_more": false
+     },
+     "Due Date": {
+      "type": "date",
+      "date": {
+       "start": "2026-11-01",
+       "end": null,
+       "time_zone": null
+      }
+     },
+     "Amount Due": {
+      "type": "number",
+      "number": 1230
+     },
+     "Amount Collected": {
+      "type": "number",
+      "number": null
+     },
+     "Paid": {
+      "type": "checkbox",
+      "checkbox": false
+     },
+     "Date Paid": {
+      "type": "date",
+      "date": null
+     },
+     "Method": {
+      "type": "select",
+      "select": {
+       "id": "x",
+       "name": "Stripe",
+       "color": "default"
+      }
+     },
+     "Notes": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Retainer (ex VAT)": {
+      "type": "number",
+      "number": 1000
+     },
+     "VAT": {
+      "type": "select",
+      "select": {
+       "id": "x",
+       "name": "Plus VAT",
+       "color": "default"
+      }
+     },
+     "Outstanding": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Collected This Month": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Collected This Week": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Outstanding This Month": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Outstanding This Week": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Month": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Year": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Week": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Quarter": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Paid In": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Late Payment": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     }
+    },
+    "url": "https://www.notion.so/d1000000000040008000000000000025"
+   },
+   {
+    "object": "page",
+    "id": "d1000000-0000-4000-8000-000000000026",
+    "created_time": "2026-01-05T10:00:00.000Z",
+    "last_edited_time": "2026-11-01T10:00:00.000Z",
+    "archived": false,
+    "in_trash": false,
+    "parent": {
+     "type": "data_source_id",
+     "data_source_id": "1596ffdf-32f4-441c-b673-6bb8dd6c43af"
+    },
+    "properties": {
+     "Payment": {
+      "id": "title",
+      "type": "title",
+      "title": [
+       {
+        "type": "text",
+        "text": {
+         "content": "Harbour Windows – AI retainer Nov",
+         "link": null
+        },
+        "plain_text": "Harbour Windows – AI retainer Nov",
+        "href": null,
+        "annotations": {}
+       }
+      ]
+     },
+     "Client": {
+      "type": "relation",
+      "relation": [
+       {
+        "id": "a1000000-0000-4000-8000-000000000007"
+       }
+      ],
+      "has_more": false
+     },
+     "Due Date": {
+      "type": "date",
+      "date": {
+       "start": "2026-11-01",
+       "end": null,
+       "time_zone": null
+      }
+     },
+     "Amount Due": {
+      "type": "number",
+      "number": 369
+     },
+     "Amount Collected": {
+      "type": "number",
+      "number": null
+     },
+     "Paid": {
+      "type": "checkbox",
+      "checkbox": false
+     },
+     "Date Paid": {
+      "type": "date",
+      "date": null
+     },
+     "Method": {
+      "type": "select",
+      "select": {
+       "id": "x",
+       "name": "Stripe",
+       "color": "default"
+      }
+     },
+     "Notes": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Retainer (ex VAT)": {
+      "type": "number",
+      "number": 300
+     },
+     "VAT": {
+      "type": "select",
+      "select": {
+       "id": "x",
+       "name": "Plus VAT",
+       "color": "default"
+      }
+     },
+     "Outstanding": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Collected This Month": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Collected This Week": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Outstanding This Month": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Outstanding This Week": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Month": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Year": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Week": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Quarter": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Paid In": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Late Payment": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     }
+    },
+    "url": "https://www.notion.so/d1000000000040008000000000000026"
+   },
+   {
+    "object": "page",
+    "id": "d1000000-0000-4000-8000-000000000027",
+    "created_time": "2026-01-05T10:00:00.000Z",
+    "last_edited_time": "2026-11-01T10:00:00.000Z",
+    "archived": false,
+    "in_trash": false,
+    "parent": {
+     "type": "data_source_id",
+     "data_source_id": "1596ffdf-32f4-441c-b673-6bb8dd6c43af"
+    },
+    "properties": {
+     "Payment": {
+      "id": "title",
+      "type": "title",
+      "title": [
+       {
+        "type": "text",
+        "text": {
+         "content": "Harbour Windows – Website set-up",
+         "link": null
+        },
+        "plain_text": "Harbour Windows – Website set-up",
+        "href": null,
+        "annotations": {}
+       }
+      ]
+     },
+     "Client": {
+      "type": "relation",
+      "relation": [
+       {
+        "id": "a1000000-0000-4000-8000-000000000007"
+       }
+      ],
+      "has_more": false
+     },
+     "Due Date": {
+      "type": "date",
+      "date": {
+       "start": "2026-09-15",
+       "end": null,
+       "time_zone": null
+      }
+     },
+     "Amount Due": {
+      "type": "number",
+      "number": 2000
+     },
+     "Amount Collected": {
+      "type": "number",
+      "number": 2000
+     },
+     "Paid": {
+      "type": "checkbox",
+      "checkbox": false
+     },
+     "Date Paid": {
+      "type": "date",
+      "date": {
+       "start": "2026-09-20",
+       "end": null,
+       "time_zone": null
+      }
+     },
+     "Method": {
+      "type": "select",
+      "select": {
+       "id": "x",
+       "name": "AIB",
+       "color": "default"
+      }
+     },
+     "Notes": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Retainer (ex VAT)": {
+      "type": "number",
+      "number": null
+     },
+     "VAT": {
+      "type": "select",
+      "select": {
+       "id": "x",
+       "name": "No VAT",
+       "color": "default"
+      }
+     },
+     "Outstanding": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Collected This Month": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Collected This Week": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Outstanding This Month": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Outstanding This Week": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Month": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Year": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Week": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Quarter": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Paid In": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Late Payment": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     }
+    },
+    "url": "https://www.notion.so/d1000000000040008000000000000027"
+   },
+   {
+    "object": "page",
+    "id": "d1000000-0000-4000-8000-000000000028",
+    "created_time": "2026-01-05T10:00:00.000Z",
+    "last_edited_time": "2026-11-01T10:00:00.000Z",
+    "archived": false,
+    "in_trash": false,
+    "parent": {
+     "type": "data_source_id",
+     "data_source_id": "1596ffdf-32f4-441c-b673-6bb8dd6c43af"
+    },
+    "properties": {
+     "Payment": {
+      "id": "title",
+      "type": "title",
+      "title": [
+       {
+        "type": "text",
+        "text": {
+         "content": "Old Town Roofing – Jul",
+         "link": null
+        },
+        "plain_text": "Old Town Roofing – Jul",
+        "href": null,
+        "annotations": {}
+       }
+      ]
+     },
+     "Client": {
+      "type": "relation",
+      "relation": [
+       {
+        "id": "a1000000-0000-4000-8000-000000000006"
+       }
+      ],
+      "has_more": false
+     },
+     "Due Date": {
+      "type": "date",
+      "date": {
+       "start": "2026-07-01",
+       "end": null,
+       "time_zone": null
+      }
+     },
+     "Amount Due": {
+      "type": "number",
+      "number": 922.5
+     },
+     "Amount Collected": {
+      "type": "number",
+      "number": 922.5
+     },
+     "Paid": {
+      "type": "checkbox",
+      "checkbox": true
+     },
+     "Date Paid": {
+      "type": "date",
+      "date": {
+       "start": "2026-07-04",
+       "end": null,
+       "time_zone": null
+      }
+     },
+     "Method": {
+      "type": "select",
+      "select": {
+       "id": "x",
+       "name": "AIB",
+       "color": "default"
+      }
+     },
+     "Notes": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Retainer (ex VAT)": {
+      "type": "number",
+      "number": 750
+     },
+     "VAT": {
+      "type": "select",
+      "select": {
+       "id": "x",
+       "name": "Plus VAT",
+       "color": "default"
+      }
+     },
+     "Outstanding": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Collected This Month": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Collected This Week": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Outstanding This Month": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Outstanding This Week": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Month": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Year": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Week": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Quarter": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Paid In": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Late Payment": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     }
+    },
+    "url": "https://www.notion.so/d1000000000040008000000000000028"
+   },
+   {
+    "object": "page",
+    "id": "d1000000-0000-4000-8000-000000000029",
+    "created_time": "2026-01-05T10:00:00.000Z",
+    "last_edited_time": "2026-11-01T10:00:00.000Z",
+    "archived": false,
+    "in_trash": false,
+    "parent": {
+     "type": "data_source_id",
+     "data_source_id": "1596ffdf-32f4-441c-b673-6bb8dd6c43af"
+    },
+    "properties": {
+     "Payment": {
+      "id": "title",
+      "type": "title",
+      "title": [
+       {
+        "type": "text",
+        "text": {
+         "content": "Mystery payment",
+         "link": null
+        },
+        "plain_text": "Mystery payment",
+        "href": null,
+        "annotations": {}
+       }
+      ]
+     },
+     "Client": {
+      "type": "relation",
+      "relation": [],
+      "has_more": false
+     },
+     "Due Date": {
+      "type": "date",
+      "date": {
+       "start": "2026-10-01",
+       "end": null,
+       "time_zone": null
+      }
+     },
+     "Amount Due": {
+      "type": "number",
+      "number": 500
+     },
+     "Amount Collected": {
+      "type": "number",
+      "number": null
+     },
+     "Paid": {
+      "type": "checkbox",
+      "checkbox": false
+     },
+     "Date Paid": {
+      "type": "date",
+      "date": null
+     },
+     "Method": {
+      "type": "select",
+      "select": null
+     },
+     "Notes": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Retainer (ex VAT)": {
+      "type": "number",
+      "number": null
+     },
+     "VAT": {
+      "type": "select",
+      "select": null
+     },
+     "Outstanding": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Collected This Month": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Collected This Week": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Outstanding This Month": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Outstanding This Week": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Month": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Year": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Week": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Quarter": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Paid In": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Late Payment": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     }
+    },
+    "url": "https://www.notion.so/d1000000000040008000000000000029"
+   }
+  ],
+  "next_cursor": "cursor-12",
+  "has_more": true,
+  "type": "page_or_data_source",
+  "page_or_data_source": {}
+ },
+ {
+  "object": "list",
+  "results": [
+   {
+    "object": "page",
+    "id": "d1000000-0000-4000-8000-000000000030",
+    "created_time": "2026-01-05T10:00:00.000Z",
+    "last_edited_time": "2026-11-01T10:00:00.000Z",
+    "archived": false,
+    "in_trash": false,
+    "parent": {
+     "type": "data_source_id",
+     "data_source_id": "1596ffdf-32f4-441c-b673-6bb8dd6c43af"
+    },
+    "properties": {
+     "Payment": {
+      "id": "title",
+      "type": "title",
+      "title": [
+       {
+        "type": "text",
+        "text": {
+         "content": "Deleted client – Oct",
+         "link": null
+        },
+        "plain_text": "Deleted client – Oct",
+        "href": null,
+        "annotations": {}
+       }
+      ]
+     },
+     "Client": {
+      "type": "relation",
+      "relation": [
+       {
+        "id": "ff000000-0000-4000-8000-000000000031"
+       }
+      ],
+      "has_more": false
+     },
+     "Due Date": {
+      "type": "date",
+      "date": {
+       "start": "2026-10-01",
+       "end": null,
+       "time_zone": null
+      }
+     },
+     "Amount Due": {
+      "type": "number",
+      "number": 800
+     },
+     "Amount Collected": {
+      "type": "number",
+      "number": null
+     },
+     "Paid": {
+      "type": "checkbox",
+      "checkbox": false
+     },
+     "Date Paid": {
+      "type": "date",
+      "date": null
+     },
+     "Method": {
+      "type": "select",
+      "select": null
+     },
+     "Notes": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Retainer (ex VAT)": {
+      "type": "number",
+      "number": null
+     },
+     "VAT": {
+      "type": "select",
+      "select": null
+     },
+     "Outstanding": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Collected This Month": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Collected This Week": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Outstanding This Month": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Outstanding This Week": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Month": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Year": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Week": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Quarter": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Paid In": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Late Payment": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     }
+    },
+    "url": "https://www.notion.so/d1000000000040008000000000000030"
+   },
+   {
+    "object": "page",
+    "id": "d1000000-0000-4000-8000-000000000032",
+    "created_time": "2026-01-05T10:00:00.000Z",
+    "last_edited_time": "2026-11-01T10:00:00.000Z",
+    "archived": false,
+    "in_trash": false,
+    "parent": {
+     "type": "data_source_id",
+     "data_source_id": "1596ffdf-32f4-441c-b673-6bb8dd6c43af"
+    },
+    "properties": {
+     "Payment": {
+      "id": "title",
+      "type": "title",
+      "title": [
+       {
+        "type": "text",
+        "text": {
+         "content": "Summit Solar – Dec",
+         "link": null
+        },
+        "plain_text": "Summit Solar – Dec",
+        "href": null,
+        "annotations": {}
+       }
+      ]
+     },
+     "Client": {
+      "type": "relation",
+      "relation": [
+       {
+        "id": "a1000000-0000-4000-8000-000000000005"
+       }
+      ],
+      "has_more": false
+     },
+     "Due Date": {
+      "type": "date",
+      "date": {
+       "start": "2026-12-01",
+       "end": null,
+       "time_zone": null
+      }
+     },
+     "Amount Due": {
+      "type": "number",
+      "number": null
+     },
+     "Amount Collected": {
+      "type": "number",
+      "number": null
+     },
+     "Paid": {
+      "type": "checkbox",
+      "checkbox": false
+     },
+     "Date Paid": {
+      "type": "date",
+      "date": null
+     },
+     "Method": {
+      "type": "select",
+      "select": null
+     },
+     "Notes": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Retainer (ex VAT)": {
+      "type": "number",
+      "number": 900
+     },
+     "VAT": {
+      "type": "select",
+      "select": {
+       "id": "x",
+       "name": "Plus VAT",
+       "color": "default"
+      }
+     },
+     "Outstanding": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Collected This Month": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Collected This Week": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Outstanding This Month": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Outstanding This Week": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Month": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Year": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Week": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Quarter": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Paid In": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     },
+     "Late Payment": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 0
+      }
+     }
+    },
+    "url": "https://www.notion.so/d1000000000040008000000000000032"
+   }
+  ],
+  "next_cursor": null,
+  "has_more": false,
+  "type": "page_or_data_source",
+  "page_or_data_source": {}
+ }
+]

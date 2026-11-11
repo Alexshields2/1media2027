@@ -1,0 +1,1949 @@
+[
+ {
+  "object": "list",
+  "results": [
+   {
+    "object": "page",
+    "id": "a1000000-0000-4000-8000-000000000001",
+    "created_time": "2026-01-05T10:00:00.000Z",
+    "last_edited_time": "2026-11-01T10:00:00.000Z",
+    "archived": false,
+    "in_trash": false,
+    "parent": {
+     "type": "data_source_id",
+     "data_source_id": "f0598ec7-8dd1-8365-bc03-877e4a61c759"
+    },
+    "properties": {
+     "Name": {
+      "id": "title",
+      "type": "title",
+      "title": [
+       {
+        "type": "text",
+        "text": {
+         "content": "Greenfield Paving Ltd",
+         "link": null
+        },
+        "plain_text": "Greenfield Paving Ltd",
+        "href": null,
+        "annotations": {}
+       }
+      ]
+     },
+     "Email": {
+      "type": "email",
+      "email": "Pat@Greenfield-Paving.example"
+     },
+     "Website URL": {
+      "type": "rich_text",
+      "rich_text": [
+       {
+        "type": "text",
+        "text": {
+         "content": "https://greenfield-paving.example",
+         "link": null
+        },
+        "plain_text": "https://greenfield-paving.example",
+        "href": null,
+        "annotations": {}
+       }
+      ]
+     },
+     "Goals": {
+      "type": "rich_text",
+      "rich_text": [
+       {
+        "type": "text",
+        "text": {
+         "content": "20 driveway jobs a month",
+         "link": null
+        },
+        "plain_text": "20 driveway jobs a month",
+        "href": null,
+        "annotations": {}
+       }
+      ]
+     },
+     "Company Info": {
+      "type": "rich_text",
+      "rich_text": [
+       {
+        "type": "text",
+        "text": {
+         "content": "Family paving firm, Co. Meath (fake)",
+         "link": null
+        },
+        "plain_text": "Family paving firm, Co. Meath (fake)",
+        "href": null,
+        "annotations": {}
+       }
+      ]
+     },
+     "Start Date": {
+      "type": "date",
+      "date": {
+       "start": "2026-02-01",
+       "end": null,
+       "time_zone": null
+      }
+     },
+     "End Date": {
+      "type": "date",
+      "date": null
+     },
+     "Price": {
+      "type": "number",
+      "number": 1400
+     },
+     "Billing Method": {
+      "type": "select",
+      "select": {
+       "id": "x",
+       "name": "Stripe",
+       "color": "default"
+      }
+     },
+     "CPL Target": {
+      "type": "number",
+      "number": 15
+     },
+     "GHL Location ID": {
+      "type": "rich_text",
+      "rich_text": [
+       {
+        "type": "text",
+        "text": {
+         "content": "loc_FAKE_greenfield",
+         "link": null
+        },
+        "plain_text": "loc_FAKE_greenfield",
+        "href": null,
+        "annotations": {}
+       }
+      ]
+     },
+     "Meta Ad Account IDs": {
+      "type": "rich_text",
+      "rich_text": [
+       {
+        "type": "text",
+        "text": {
+         "content": "act_1000000001, act_1000000002",
+         "link": null
+        },
+        "plain_text": "act_1000000001, act_1000000002",
+        "href": null,
+        "annotations": {}
+       }
+      ]
+     },
+     "Stripe Customer ID": {
+      "type": "rich_text",
+      "rich_text": [
+       {
+        "type": "text",
+        "text": {
+         "content": "cus_FAKEgreenfield",
+         "link": null
+        },
+        "plain_text": "cus_FAKEgreenfield",
+        "href": null,
+        "annotations": {}
+       }
+      ]
+     },
+     "Report Currency": {
+      "type": "select",
+      "select": {
+       "id": "x",
+       "name": "EUR",
+       "color": "default"
+      }
+     },
+     "Report Greeting": {
+      "type": "rich_text",
+      "rich_text": [
+       {
+        "type": "text",
+        "text": {
+         "content": "Hi Pat",
+         "link": null
+        },
+        "plain_text": "Hi Pat",
+        "href": null,
+        "annotations": {}
+       }
+      ]
+     },
+     "Report Rules": {
+      "type": "rich_text",
+      "rich_text": [
+       {
+        "type": "text",
+        "text": {
+         "content": "Break out the two ad accounts separately.",
+         "link": null
+        },
+        "plain_text": "Break out the two ad accounts separately.",
+        "href": null,
+        "annotations": {}
+       }
+      ]
+     },
+     "Active": {
+      "type": "checkbox",
+      "checkbox": true
+     },
+     "Status": {
+      "type": "multi_select",
+      "multi_select": [
+       {
+        "id": "x",
+        "name": "Ongoing",
+        "color": "default"
+       }
+      ]
+     },
+     "👟 Sales CRM": {
+      "type": "relation",
+      "relation": [
+       {
+        "id": "c1000000-0000-4000-8000-000000000010"
+       }
+      ],
+      "has_more": false
+     },
+     "Address": {
+      "type": "rich_text",
+      "rich_text": [
+       {
+        "type": "text",
+        "text": {
+         "content": "1 Example Road",
+         "link": null
+        },
+        "plain_text": "1 Example Road",
+        "href": null,
+        "annotations": {}
+       }
+      ]
+     },
+     "City": {
+      "type": "rich_text",
+      "rich_text": [
+       {
+        "type": "text",
+        "text": {
+         "content": "Navan",
+         "link": null
+        },
+        "plain_text": "Navan",
+        "href": null,
+        "annotations": {}
+       }
+      ]
+     },
+     "Country": {
+      "type": "rich_text",
+      "rich_text": [
+       {
+        "type": "text",
+        "text": {
+         "content": "Ireland",
+         "link": null
+        },
+        "plain_text": "Ireland",
+        "href": null,
+        "annotations": {}
+       }
+      ]
+     },
+     "State": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Postal Code": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Slack Channel": {
+      "type": "rich_text",
+      "rich_text": [
+       {
+        "type": "text",
+        "text": {
+         "content": "#client-greenfield",
+         "link": null
+        },
+        "plain_text": "#client-greenfield",
+        "href": null,
+        "annotations": {}
+       }
+      ]
+     },
+     "Google Drive Link": {
+      "type": "rich_text",
+      "rich_text": [
+       {
+        "type": "text",
+        "text": {
+         "content": "https://drive.example/greenfield",
+         "link": null
+        },
+        "plain_text": "https://drive.example/greenfield",
+        "href": null,
+        "annotations": {}
+       }
+      ]
+     },
+     "Competitors": {
+      "type": "rich_text",
+      "rich_text": [
+       {
+        "type": "text",
+        "text": {
+         "content": "Other Paving Ltd",
+         "link": null
+        },
+        "plain_text": "Other Paving Ltd",
+        "href": null,
+        "annotations": {}
+       }
+      ]
+     },
+     "Target Keywords": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Account Manager": {
+      "type": "people",
+      "people": [
+       {
+        "object": "user",
+        "id": "user-fake-1"
+       }
+      ]
+     },
+     "Client Access": {
+      "type": "people",
+      "people": []
+     },
+     "Time Entries": {
+      "type": "relation",
+      "relation": [],
+      "has_more": false
+     },
+     "Last Time Logged": {
+      "type": "rollup",
+      "rollup": {
+       "type": "date",
+       "date": null,
+       "function": "latest_date"
+      }
+     },
+     "Total Minutes Logged": {
+      "type": "rollup",
+      "rollup": {
+       "type": "number",
+       "number": 120,
+       "function": "sum"
+      }
+     },
+     "Formula": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 1
+      }
+     }
+    },
+    "url": "https://www.notion.so/a1000000000040008000000000000001"
+   },
+   {
+    "object": "page",
+    "id": "a1000000-0000-4000-8000-000000000002",
+    "created_time": "2026-01-05T10:00:00.000Z",
+    "last_edited_time": "2026-11-01T10:00:00.000Z",
+    "archived": false,
+    "in_trash": false,
+    "parent": {
+     "type": "data_source_id",
+     "data_source_id": "f0598ec7-8dd1-8365-bc03-877e4a61c759"
+    },
+    "properties": {
+     "Name": {
+      "id": "title",
+      "type": "title",
+      "title": [
+       {
+        "type": "text",
+        "text": {
+         "content": "Greenfield Paving",
+         "link": null
+        },
+        "plain_text": "Greenfield Paving",
+        "href": null,
+        "annotations": {}
+       }
+      ]
+     },
+     "Email": {
+      "type": "email",
+      "email": null
+     },
+     "Website URL": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Goals": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Company Info": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Start Date": {
+      "type": "date",
+      "date": null
+     },
+     "End Date": {
+      "type": "date",
+      "date": null
+     },
+     "Price": {
+      "type": "number",
+      "number": null
+     },
+     "Billing Method": {
+      "type": "select",
+      "select": null
+     },
+     "CPL Target": {
+      "type": "number",
+      "number": null
+     },
+     "GHL Location ID": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Meta Ad Account IDs": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Stripe Customer ID": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Report Currency": {
+      "type": "select",
+      "select": null
+     },
+     "Report Greeting": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Report Rules": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Active": {
+      "type": "checkbox",
+      "checkbox": false
+     },
+     "Status": {
+      "type": "multi_select",
+      "multi_select": [
+       {
+        "id": "x",
+        "name": "In Progress",
+        "color": "default"
+       }
+      ]
+     },
+     "👟 Sales CRM": {
+      "type": "relation",
+      "relation": [],
+      "has_more": false
+     },
+     "Address": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "City": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Country": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "State": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Postal Code": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Slack Channel": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Google Drive Link": {
+      "type": "rich_text",
+      "rich_text": [
+       {
+        "type": "text",
+        "text": {
+         "content": "https://drive.example/greenfield-old",
+         "link": null
+        },
+        "plain_text": "https://drive.example/greenfield-old",
+        "href": null,
+        "annotations": {}
+       }
+      ]
+     },
+     "Competitors": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Target Keywords": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Account Manager": {
+      "type": "people",
+      "people": []
+     },
+     "Client Access": {
+      "type": "people",
+      "people": []
+     },
+     "Time Entries": {
+      "type": "relation",
+      "relation": [],
+      "has_more": false
+     },
+     "Last Time Logged": {
+      "type": "rollup",
+      "rollup": {
+       "type": "date",
+       "date": null,
+       "function": "latest_date"
+      }
+     },
+     "Total Minutes Logged": {
+      "type": "rollup",
+      "rollup": {
+       "type": "number",
+       "number": 120,
+       "function": "sum"
+      }
+     },
+     "Formula": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 1
+      }
+     }
+    },
+    "url": "https://www.notion.so/a1000000000040008000000000000002"
+   },
+   {
+    "object": "page",
+    "id": "a1000000-0000-4000-8000-000000000003",
+    "created_time": "2026-01-05T10:00:00.000Z",
+    "last_edited_time": "2026-11-01T10:00:00.000Z",
+    "archived": false,
+    "in_trash": false,
+    "parent": {
+     "type": "data_source_id",
+     "data_source_id": "f0598ec7-8dd1-8365-bc03-877e4a61c759"
+    },
+    "properties": {
+     "Name": {
+      "id": "title",
+      "type": "title",
+      "title": [
+       {
+        "type": "text",
+        "text": {
+         "content": "Oakline Attic Conversions",
+         "link": null
+        },
+        "plain_text": "Oakline Attic Conversions",
+        "href": null,
+        "annotations": {}
+       }
+      ]
+     },
+     "Email": {
+      "type": "email",
+      "email": "office@oakline-attics.example"
+     },
+     "Website URL": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Goals": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Company Info": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Start Date": {
+      "type": "date",
+      "date": {
+       "start": "2026-01-01",
+       "end": null,
+       "time_zone": null
+      }
+     },
+     "End Date": {
+      "type": "date",
+      "date": null
+     },
+     "Price": {
+      "type": "number",
+      "number": 3000
+     },
+     "Billing Method": {
+      "type": "select",
+      "select": {
+       "id": "x",
+       "name": "Invoice",
+       "color": "default"
+      }
+     },
+     "CPL Target": {
+      "type": "number",
+      "number": 10
+     },
+     "GHL Location ID": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Meta Ad Account IDs": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Stripe Customer ID": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Report Currency": {
+      "type": "select",
+      "select": null
+     },
+     "Report Greeting": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Report Rules": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Active": {
+      "type": "checkbox",
+      "checkbox": false
+     },
+     "Status": {
+      "type": "multi_select",
+      "multi_select": [
+       {
+        "id": "x",
+        "name": "In Progress",
+        "color": "default"
+       }
+      ]
+     },
+     "👟 Sales CRM": {
+      "type": "relation",
+      "relation": [],
+      "has_more": false
+     },
+     "Address": {
+      "type": "rich_text",
+      "rich_text": [
+       {
+        "type": "text",
+        "text": {
+         "content": "2 Sample Street",
+         "link": null
+        },
+        "plain_text": "2 Sample Street",
+        "href": null,
+        "annotations": {}
+       }
+      ]
+     },
+     "City": {
+      "type": "rich_text",
+      "rich_text": [
+       {
+        "type": "text",
+        "text": {
+         "content": "Cork",
+         "link": null
+        },
+        "plain_text": "Cork",
+        "href": null,
+        "annotations": {}
+       }
+      ]
+     },
+     "Country": {
+      "type": "rich_text",
+      "rich_text": [
+       {
+        "type": "text",
+        "text": {
+         "content": "Ireland",
+         "link": null
+        },
+        "plain_text": "Ireland",
+        "href": null,
+        "annotations": {}
+       }
+      ]
+     },
+     "State": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Postal Code": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Slack Channel": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Google Drive Link": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Competitors": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Target Keywords": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Account Manager": {
+      "type": "people",
+      "people": []
+     },
+     "Client Access": {
+      "type": "people",
+      "people": []
+     },
+     "Time Entries": {
+      "type": "relation",
+      "relation": [],
+      "has_more": false
+     },
+     "Last Time Logged": {
+      "type": "rollup",
+      "rollup": {
+       "type": "date",
+       "date": null,
+       "function": "latest_date"
+      }
+     },
+     "Total Minutes Logged": {
+      "type": "rollup",
+      "rollup": {
+       "type": "number",
+       "number": 120,
+       "function": "sum"
+      }
+     },
+     "Formula": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 1
+      }
+     }
+    },
+    "url": "https://www.notion.so/a1000000000040008000000000000003"
+   },
+   {
+    "object": "page",
+    "id": "a1000000-0000-4000-8000-000000000004",
+    "created_time": "2026-01-05T10:00:00.000Z",
+    "last_edited_time": "2026-11-01T10:00:00.000Z",
+    "archived": false,
+    "in_trash": false,
+    "parent": {
+     "type": "data_source_id",
+     "data_source_id": "f0598ec7-8dd1-8365-bc03-877e4a61c759"
+    },
+    "properties": {
+     "Name": {
+      "id": "title",
+      "type": "title",
+      "title": [
+       {
+        "type": "text",
+        "text": {
+         "content": "Brightwater Bathrooms",
+         "link": null
+        },
+        "plain_text": "Brightwater Bathrooms",
+        "href": null,
+        "annotations": {}
+       }
+      ]
+     },
+     "Email": {
+      "type": "email",
+      "email": "ciara@brightwater-bath.example"
+     },
+     "Website URL": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Goals": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Company Info": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Start Date": {
+      "type": "date",
+      "date": {
+       "start": "2026-05-01",
+       "end": null,
+       "time_zone": null
+      }
+     },
+     "End Date": {
+      "type": "date",
+      "date": null
+     },
+     "Price": {
+      "type": "number",
+      "number": 400
+     },
+     "Billing Method": {
+      "type": "select",
+      "select": {
+       "id": "x",
+       "name": "Invoice",
+       "color": "default"
+      }
+     },
+     "CPL Target": {
+      "type": "number",
+      "number": 15
+     },
+     "GHL Location ID": {
+      "type": "rich_text",
+      "rich_text": [
+       {
+        "type": "text",
+        "text": {
+         "content": "loc_FAKE_brightwater",
+         "link": null
+        },
+        "plain_text": "loc_FAKE_brightwater",
+        "href": null,
+        "annotations": {}
+       }
+      ]
+     },
+     "Meta Ad Account IDs": {
+      "type": "rich_text",
+      "rich_text": [
+       {
+        "type": "text",
+        "text": {
+         "content": "act_1000000003",
+         "link": null
+        },
+        "plain_text": "act_1000000003",
+        "href": null,
+        "annotations": {}
+       }
+      ]
+     },
+     "Stripe Customer ID": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Report Currency": {
+      "type": "select",
+      "select": null
+     },
+     "Report Greeting": {
+      "type": "rich_text",
+      "rich_text": [
+       {
+        "type": "text",
+        "text": {
+         "content": "Hi guys",
+         "link": null
+        },
+        "plain_text": "Hi guys",
+        "href": null,
+        "annotations": {}
+       }
+      ]
+     },
+     "Report Rules": {
+      "type": "rich_text",
+      "rich_text": [
+       {
+        "type": "text",
+        "text": {
+         "content": "Do NOT list leads. Give totals only.",
+         "link": null
+        },
+        "plain_text": "Do NOT list leads. Give totals only.",
+        "href": null,
+        "annotations": {}
+       }
+      ]
+     },
+     "Active": {
+      "type": "checkbox",
+      "checkbox": false
+     },
+     "Status": {
+      "type": "multi_select",
+      "multi_select": [
+       {
+        "id": "x",
+        "name": "Ongoing",
+        "color": "default"
+       }
+      ]
+     },
+     "👟 Sales CRM": {
+      "type": "relation",
+      "relation": [],
+      "has_more": false
+     },
+     "Address": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "City": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Country": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "State": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Postal Code": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Slack Channel": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Google Drive Link": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Competitors": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Target Keywords": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Account Manager": {
+      "type": "people",
+      "people": []
+     },
+     "Client Access": {
+      "type": "people",
+      "people": []
+     },
+     "Time Entries": {
+      "type": "relation",
+      "relation": [],
+      "has_more": false
+     },
+     "Last Time Logged": {
+      "type": "rollup",
+      "rollup": {
+       "type": "date",
+       "date": null,
+       "function": "latest_date"
+      }
+     },
+     "Total Minutes Logged": {
+      "type": "rollup",
+      "rollup": {
+       "type": "number",
+       "number": 120,
+       "function": "sum"
+      }
+     },
+     "Formula": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 1
+      }
+     }
+    },
+    "url": "https://www.notion.so/a1000000000040008000000000000004"
+   },
+   {
+    "object": "page",
+    "id": "a1000000-0000-4000-8000-000000000005",
+    "created_time": "2026-01-05T10:00:00.000Z",
+    "last_edited_time": "2026-11-01T10:00:00.000Z",
+    "archived": false,
+    "in_trash": false,
+    "parent": {
+     "type": "data_source_id",
+     "data_source_id": "f0598ec7-8dd1-8365-bc03-877e4a61c759"
+    },
+    "properties": {
+     "Name": {
+      "id": "title",
+      "type": "title",
+      "title": [
+       {
+        "type": "text",
+        "text": {
+         "content": "Summit Solar",
+         "link": null
+        },
+        "plain_text": "Summit Solar",
+        "href": null,
+        "annotations": {}
+       }
+      ]
+     },
+     "Email": {
+      "type": "email",
+      "email": "hello@summit-solar.example"
+     },
+     "Website URL": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Goals": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Company Info": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Start Date": {
+      "type": "date",
+      "date": null
+     },
+     "End Date": {
+      "type": "date",
+      "date": null
+     },
+     "Price": {
+      "type": "number",
+      "number": 900
+     },
+     "Billing Method": {
+      "type": "select",
+      "select": {
+       "id": "x",
+       "name": "Revolut",
+       "color": "default"
+      }
+     },
+     "CPL Target": {
+      "type": "number",
+      "number": null
+     },
+     "GHL Location ID": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Meta Ad Account IDs": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Stripe Customer ID": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Report Currency": {
+      "type": "select",
+      "select": null
+     },
+     "Report Greeting": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Report Rules": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Active": {
+      "type": "checkbox",
+      "checkbox": false
+     },
+     "Status": {
+      "type": "multi_select",
+      "multi_select": [
+       {
+        "id": "x",
+        "name": "Upcoming",
+        "color": "default"
+       }
+      ]
+     },
+     "👟 Sales CRM": {
+      "type": "relation",
+      "relation": [],
+      "has_more": false
+     },
+     "Address": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "City": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Country": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "State": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Postal Code": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Slack Channel": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Google Drive Link": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Competitors": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Target Keywords": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Account Manager": {
+      "type": "people",
+      "people": []
+     },
+     "Client Access": {
+      "type": "people",
+      "people": []
+     },
+     "Time Entries": {
+      "type": "relation",
+      "relation": [],
+      "has_more": false
+     },
+     "Last Time Logged": {
+      "type": "rollup",
+      "rollup": {
+       "type": "date",
+       "date": null,
+       "function": "latest_date"
+      }
+     },
+     "Total Minutes Logged": {
+      "type": "rollup",
+      "rollup": {
+       "type": "number",
+       "number": 120,
+       "function": "sum"
+      }
+     },
+     "Formula": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 1
+      }
+     }
+    },
+    "url": "https://www.notion.so/a1000000000040008000000000000005"
+   }
+  ],
+  "next_cursor": "cursor-5",
+  "has_more": true,
+  "type": "page_or_data_source",
+  "page_or_data_source": {}
+ },
+ {
+  "object": "list",
+  "results": [
+   {
+    "object": "page",
+    "id": "a1000000-0000-4000-8000-000000000006",
+    "created_time": "2026-01-05T10:00:00.000Z",
+    "last_edited_time": "2026-11-01T10:00:00.000Z",
+    "archived": false,
+    "in_trash": false,
+    "parent": {
+     "type": "data_source_id",
+     "data_source_id": "f0598ec7-8dd1-8365-bc03-877e4a61c759"
+    },
+    "properties": {
+     "Name": {
+      "id": "title",
+      "type": "title",
+      "title": [
+       {
+        "type": "text",
+        "text": {
+         "content": "Old Town Roofing",
+         "link": null
+        },
+        "plain_text": "Old Town Roofing",
+        "href": null,
+        "annotations": {}
+       }
+      ]
+     },
+     "Email": {
+      "type": "email",
+      "email": "info@oldtown-roofing.example"
+     },
+     "Website URL": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Goals": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Company Info": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Start Date": {
+      "type": "date",
+      "date": {
+       "start": "2025-06-01",
+       "end": null,
+       "time_zone": null
+      }
+     },
+     "End Date": {
+      "type": "date",
+      "date": {
+       "start": "2026-08-31",
+       "end": null,
+       "time_zone": null
+      }
+     },
+     "Price": {
+      "type": "number",
+      "number": 750
+     },
+     "Billing Method": {
+      "type": "select",
+      "select": {
+       "id": "x",
+       "name": "AIB",
+       "color": "default"
+      }
+     },
+     "CPL Target": {
+      "type": "number",
+      "number": null
+     },
+     "GHL Location ID": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Meta Ad Account IDs": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Stripe Customer ID": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Report Currency": {
+      "type": "select",
+      "select": null
+     },
+     "Report Greeting": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Report Rules": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Active": {
+      "type": "checkbox",
+      "checkbox": false
+     },
+     "Status": {
+      "type": "multi_select",
+      "multi_select": [
+       {
+        "id": "x",
+        "name": "Completed",
+        "color": "default"
+       }
+      ]
+     },
+     "👟 Sales CRM": {
+      "type": "relation",
+      "relation": [],
+      "has_more": false
+     },
+     "Address": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "City": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Country": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "State": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Postal Code": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Slack Channel": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Google Drive Link": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Competitors": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Target Keywords": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Account Manager": {
+      "type": "people",
+      "people": []
+     },
+     "Client Access": {
+      "type": "people",
+      "people": []
+     },
+     "Time Entries": {
+      "type": "relation",
+      "relation": [],
+      "has_more": false
+     },
+     "Last Time Logged": {
+      "type": "rollup",
+      "rollup": {
+       "type": "date",
+       "date": null,
+       "function": "latest_date"
+      }
+     },
+     "Total Minutes Logged": {
+      "type": "rollup",
+      "rollup": {
+       "type": "number",
+       "number": 120,
+       "function": "sum"
+      }
+     },
+     "Formula": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 1
+      }
+     }
+    },
+    "url": "https://www.notion.so/a1000000000040008000000000000006"
+   },
+   {
+    "object": "page",
+    "id": "a1000000-0000-4000-8000-000000000007",
+    "created_time": "2026-01-05T10:00:00.000Z",
+    "last_edited_time": "2026-11-01T10:00:00.000Z",
+    "archived": false,
+    "in_trash": false,
+    "parent": {
+     "type": "data_source_id",
+     "data_source_id": "f0598ec7-8dd1-8365-bc03-877e4a61c759"
+    },
+    "properties": {
+     "Name": {
+      "id": "title",
+      "type": "title",
+      "title": [
+       {
+        "type": "text",
+        "text": {
+         "content": "Harbour Windows & Doors",
+         "link": null
+        },
+        "plain_text": "Harbour Windows & Doors",
+        "href": null,
+        "annotations": {}
+       }
+      ]
+     },
+     "Email": {
+      "type": "email",
+      "email": "sales@harbour-windows.example"
+     },
+     "Website URL": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Goals": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Company Info": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Start Date": {
+      "type": "date",
+      "date": {
+       "start": "2026-09-01",
+       "end": null,
+       "time_zone": null
+      }
+     },
+     "End Date": {
+      "type": "date",
+      "date": null
+     },
+     "Price": {
+      "type": "number",
+      "number": null
+     },
+     "Billing Method": {
+      "type": "select",
+      "select": {
+       "id": "x",
+       "name": "Stripe",
+       "color": "default"
+      }
+     },
+     "CPL Target": {
+      "type": "number",
+      "number": 20
+     },
+     "GHL Location ID": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Meta Ad Account IDs": {
+      "type": "rich_text",
+      "rich_text": [
+       {
+        "type": "text",
+        "text": {
+         "content": "act_1000000004",
+         "link": null
+        },
+        "plain_text": "act_1000000004",
+        "href": null,
+        "annotations": {}
+       }
+      ]
+     },
+     "Stripe Customer ID": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Report Currency": {
+      "type": "select",
+      "select": null
+     },
+     "Report Greeting": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Report Rules": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Active": {
+      "type": "checkbox",
+      "checkbox": true
+     },
+     "Status": {
+      "type": "multi_select",
+      "multi_select": [
+       {
+        "id": "x",
+        "name": "Ongoing",
+        "color": "default"
+       }
+      ]
+     },
+     "👟 Sales CRM": {
+      "type": "relation",
+      "relation": [],
+      "has_more": false
+     },
+     "Address": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "City": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Country": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "State": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Postal Code": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Slack Channel": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Google Drive Link": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Competitors": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Target Keywords": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Account Manager": {
+      "type": "people",
+      "people": []
+     },
+     "Client Access": {
+      "type": "people",
+      "people": []
+     },
+     "Time Entries": {
+      "type": "relation",
+      "relation": [],
+      "has_more": false
+     },
+     "Last Time Logged": {
+      "type": "rollup",
+      "rollup": {
+       "type": "date",
+       "date": null,
+       "function": "latest_date"
+      }
+     },
+     "Total Minutes Logged": {
+      "type": "rollup",
+      "rollup": {
+       "type": "number",
+       "number": 120,
+       "function": "sum"
+      }
+     },
+     "Formula": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 1
+      }
+     }
+    },
+    "url": "https://www.notion.so/a1000000000040008000000000000007"
+   },
+   {
+    "object": "page",
+    "id": "a1000000-0000-4000-8000-000000000008",
+    "created_time": "2026-01-05T10:00:00.000Z",
+    "last_edited_time": "2026-11-01T10:00:00.000Z",
+    "archived": true,
+    "in_trash": true,
+    "parent": {
+     "type": "data_source_id",
+     "data_source_id": "f0598ec7-8dd1-8365-bc03-877e4a61c759"
+    },
+    "properties": {
+     "Name": {
+      "id": "title",
+      "type": "title",
+      "title": [
+       {
+        "type": "text",
+        "text": {
+         "content": "Test Client (delete me)",
+         "link": null
+        },
+        "plain_text": "Test Client (delete me)",
+        "href": null,
+        "annotations": {}
+       }
+      ]
+     },
+     "Email": {
+      "type": "email",
+      "email": null
+     },
+     "Website URL": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Goals": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Company Info": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Start Date": {
+      "type": "date",
+      "date": null
+     },
+     "End Date": {
+      "type": "date",
+      "date": null
+     },
+     "Price": {
+      "type": "number",
+      "number": null
+     },
+     "Billing Method": {
+      "type": "select",
+      "select": null
+     },
+     "CPL Target": {
+      "type": "number",
+      "number": null
+     },
+     "GHL Location ID": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Meta Ad Account IDs": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Stripe Customer ID": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Report Currency": {
+      "type": "select",
+      "select": null
+     },
+     "Report Greeting": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Report Rules": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Active": {
+      "type": "checkbox",
+      "checkbox": false
+     },
+     "Status": {
+      "type": "multi_select",
+      "multi_select": []
+     },
+     "👟 Sales CRM": {
+      "type": "relation",
+      "relation": [],
+      "has_more": false
+     },
+     "Address": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "City": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Country": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "State": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Postal Code": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Slack Channel": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Google Drive Link": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Competitors": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Target Keywords": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Account Manager": {
+      "type": "people",
+      "people": []
+     },
+     "Client Access": {
+      "type": "people",
+      "people": []
+     },
+     "Time Entries": {
+      "type": "relation",
+      "relation": [],
+      "has_more": false
+     },
+     "Last Time Logged": {
+      "type": "rollup",
+      "rollup": {
+       "type": "date",
+       "date": null,
+       "function": "latest_date"
+      }
+     },
+     "Total Minutes Logged": {
+      "type": "rollup",
+      "rollup": {
+       "type": "number",
+       "number": 120,
+       "function": "sum"
+      }
+     },
+     "Formula": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 1
+      }
+     }
+    },
+    "url": "https://www.notion.so/a1000000000040008000000000000008"
+   },
+   {
+    "object": "page",
+    "id": "a1000000-0000-4000-8000-000000000009",
+    "created_time": "2026-01-05T10:00:00.000Z",
+    "last_edited_time": "2026-11-01T10:00:00.000Z",
+    "archived": false,
+    "in_trash": false,
+    "parent": {
+     "type": "data_source_id",
+     "data_source_id": "f0598ec7-8dd1-8365-bc03-877e4a61c759"
+    },
+    "properties": {
+     "Name": {
+      "id": "title",
+      "type": "title",
+      "title": []
+     },
+     "Email": {
+      "type": "email",
+      "email": null
+     },
+     "Website URL": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Goals": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Company Info": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Start Date": {
+      "type": "date",
+      "date": null
+     },
+     "End Date": {
+      "type": "date",
+      "date": null
+     },
+     "Price": {
+      "type": "number",
+      "number": null
+     },
+     "Billing Method": {
+      "type": "select",
+      "select": null
+     },
+     "CPL Target": {
+      "type": "number",
+      "number": null
+     },
+     "GHL Location ID": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Meta Ad Account IDs": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Stripe Customer ID": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Report Currency": {
+      "type": "select",
+      "select": null
+     },
+     "Report Greeting": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Report Rules": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Active": {
+      "type": "checkbox",
+      "checkbox": false
+     },
+     "Status": {
+      "type": "multi_select",
+      "multi_select": []
+     },
+     "👟 Sales CRM": {
+      "type": "relation",
+      "relation": [],
+      "has_more": false
+     },
+     "Address": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "City": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Country": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "State": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Postal Code": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Slack Channel": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Google Drive Link": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Competitors": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Target Keywords": {
+      "type": "rich_text",
+      "rich_text": []
+     },
+     "Account Manager": {
+      "type": "people",
+      "people": []
+     },
+     "Client Access": {
+      "type": "people",
+      "people": []
+     },
+     "Time Entries": {
+      "type": "relation",
+      "relation": [],
+      "has_more": false
+     },
+     "Last Time Logged": {
+      "type": "rollup",
+      "rollup": {
+       "type": "date",
+       "date": null,
+       "function": "latest_date"
+      }
+     },
+     "Total Minutes Logged": {
+      "type": "rollup",
+      "rollup": {
+       "type": "number",
+       "number": 120,
+       "function": "sum"
+      }
+     },
+     "Formula": {
+      "type": "formula",
+      "formula": {
+       "type": "number",
+       "number": 1
+      }
+     }
+    },
+    "url": "https://www.notion.so/a1000000000040008000000000000009"
+   }
+  ],
+  "next_cursor": null,
+  "has_more": false,
+  "type": "page_or_data_source",
+  "page_or_data_source": {}
+ }
+]
