@@ -1,0 +1,35 @@
+{
+  "id": "evt_PavingRefund",
+  "object": "event",
+  "api_version": "2026-10-28.endive",
+  "created": 1794232810,
+  "livemode": false,
+  "pending_webhooks": 1,
+  "request": {
+    "id": null,
+    "idempotency_key": null
+  },
+  "type": "charge.refunded",
+  "data": {
+    "object": {
+      "id": "ch_DemoPavingNov",
+      "object": "charge",
+      "amount": 184500,
+      "amount_captured": 184500,
+      "amount_refunded": 20000,
+      "captured": true,
+      "currency": "eur",
+      "customer": "cus_DemoPaving",
+      "created": 1794232800,
+      "paid": true,
+      "refunded": false,
+      "status": "succeeded",
+      "payment_intent": "pi_DemoPavingNov",
+      "billing_details": {
+        "name": "Demo Paving Co",
+        "email": "pat@example.com"
+      },
+      "livemode": false
+    }
+  }
+}

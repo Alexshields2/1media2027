@@ -13,6 +13,8 @@ import { executeApproval, rejectApproval } from "@/lib/approvals";
 import { runAgent } from "@/lib/runner";
 import { AGENTS } from "@/agents/registry";
 import { today, weekStart } from "@/lib/dates";
+import { assignIncoming, ignoreIncoming, importBankCsv, restoreIncoming } from "@/lib/reconcile";
+import { saveCashSummary } from "@/lib/finance";
 
 // ---------- auth ----------
 
@@ -114,6 +116,66 @@ export async function addPaymentAction(form: FormData) {
     .values({ clientId, label: str(form, "label") ?? "One-off", period: `${month}-01`, amountDue, dueDate: str(form, "dueDate") ?? `${month}-01` })
     .onConflictDoNothing();
   revalidatePath("/payments");
+}
+
+// ---------- reconciliation ----------
+
+const back = (form: FormData, extra: Record<string, string>) => {
+  const q = new URLSearchParams(extra);
+  const month = str(form, "month");
+  if (month) q.set("month", month);
+  return `/payments?${q.toString()}#reconcile`;
+};
+
+/** Upload a Revolut Business or AIB CSV export. Credits land in Unmatched with suggestions; nothing is applied. */
+export async function importBankCsvAction(form: FormData) {
+  const file = form.get("file");
+  if (!(file instanceof File) || !file.size) redirect(back(form, { error: "Choose a CSV file to upload." }));
+  if (file.size > 5_000_000) redirect(back(form, { error: "That file is over 5 MB. Export a shorter date range." }));
+  const format = str(form, "format");
+  let msg: string;
+  try {
+    const r = await importBankCsv(await file.text(), { format: format === "revolut" || format === "aib" ? format : undefined, fileName: file.name });
+    msg = `${r.format}: ${r.credits} incoming payment${r.credits === 1 ? "" : "s"} read, ${r.inserted} new (${r.suggested} with a suggested match), ${r.duplicates} already imported, ${r.skipped} other rows skipped.${r.errors.length ? ` ${r.errors.length} row(s) unreadable: ${r.errors.slice(0, 3).join(" ")}` : ""}`;
+  } catch (e) {
+    redirect(back(form, { error: e instanceof Error ? e.message : String(e) }));
+  }
+  revalidatePath("/payments");
+  redirect(back(form, { imported: msg }));
+}
+
+export async function assignIncomingAction(form: FormData) {
+  const incomingId = z.coerce.number().parse(form.get("incomingId"));
+  const paymentId = z.coerce.number().parse(form.get("paymentId"));
+  try {
+    await assignIncoming(incomingId, paymentId, { linkStripeCustomer: form.get("linkStripe") === "on" });
+  } catch (e) {
+    redirect(back(form, { error: e instanceof Error ? e.message : String(e) }));
+  }
+  revalidatePath("/payments");
+  revalidatePath("/");
+  redirect(back(form, {}));
+}
+
+export async function ignoreIncomingAction(form: FormData) {
+  await ignoreIncoming(z.coerce.number().parse(form.get("incomingId")));
+  revalidatePath("/payments");
+  redirect(back(form, {}));
+}
+
+export async function restoreIncomingAction(form: FormData) {
+  await restoreIncoming(z.coerce.number().parse(form.get("incomingId")));
+  revalidatePath("/payments");
+  redirect(back(form, {}));
+}
+
+export async function saveCashSummaryAction(form: FormData) {
+  await saveCashSummary();
+  revalidatePath("/payments");
+  const q = new URLSearchParams();
+  const month = str(form, "month");
+  if (month) q.set("month", month);
+  redirect(`/payments?${q.toString()}#cash-summary`);
 }
 
 // ---------- tasks ----------

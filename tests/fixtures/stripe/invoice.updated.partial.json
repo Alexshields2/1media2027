@@ -1,0 +1,82 @@
+{
+  "id": "evt_AtticNovPart",
+  "object": "event",
+  "api_version": "2026-10-28.endive",
+  "created": 1793782800,
+  "livemode": false,
+  "pending_webhooks": 1,
+  "request": {
+    "id": null,
+    "idempotency_key": null
+  },
+  "type": "invoice.updated",
+  "data": {
+    "object": {
+      "id": "in_DemoAtticNov",
+      "object": "invoice",
+      "account_country": "IE",
+      "currency": "eur",
+      "customer": "cus_DemoAttic",
+      "customer_name": "Demo Attic Conversions",
+      "customer_email": "mary@example.com",
+      "number": "1M-0043",
+      "status": "open",
+      "amount_due": 369000,
+      "amount_paid": 100000,
+      "amount_remaining": 269000,
+      "total": 369000,
+      "subtotal": 300000,
+      "attempt_count": 0,
+      "attempted": false,
+      "collection_method": "send_invoice",
+      "created": 1793494800,
+      "period_start": 1793491200,
+      "period_end": 1793491200,
+      "livemode": false,
+      "lines": {
+        "object": "list",
+        "has_more": false,
+        "url": "/v1/invoices/in_DemoAtticNov/lines",
+        "data": [
+          {
+            "id": "il_DemoAtticNov",
+            "object": "line_item",
+            "amount": 369000,
+            "currency": "eur",
+            "description": "Monthly retainer",
+            "period": {
+              "start": 1793491200,
+              "end": 1796083200
+            }
+          }
+        ]
+      },
+      "status_transitions": {
+        "finalized_at": 1793494800,
+        "marked_uncollectible_at": null,
+        "paid_at": null,
+        "voided_at": null
+      },
+      "payments": {
+        "object": "list",
+        "has_more": false,
+        "url": "/v1/invoice_payments?invoice=in_DemoAtticNov",
+        "data": [
+          {
+            "id": "inpay_DemoAtticNov",
+            "object": "invoice_payment",
+            "amount_paid": 100000,
+            "currency": "eur",
+            "invoice": "in_DemoAtticNov",
+            "is_default": true,
+            "status": "paid",
+            "payment": {
+              "type": "payment_intent",
+              "payment_intent": "pi_DemoAtticNov1"
+            }
+          }
+        ]
+      }
+    }
+  }
+}

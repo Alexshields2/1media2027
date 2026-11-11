@@ -4,18 +4,23 @@ import { prompt } from "./prompt";
 export const finance: AgentDefinition = {
   name: "finance",
   title: "Finance",
-  description: "Matches Stripe payments to retainers, flags overdue clients, drafts chasers, and sends a Friday cash summary.",
+  description: "Flags overdue clients by age, queues chasers for approval, and saves a Friday cash summary (posted to Slack when configured). Stripe and bank payments reconcile on the Payments page.",
   prompt,
   autonomy: "L2",
   toolkits: ["stripe", "gmail"],
+  osTools: ["OS_LIST_CLIENTS", "OS_LIST_PAYMENTS", "OS_GET_RECEIVABLES", "OS_RECORD_PAYMENT", "OS_QUEUE_CHASER", "OS_SAVE_CASH_SUMMARY", "OS_CREATE_TASK"],
   schedule: "0 8 * * 1-5",
   scheduleLabel: "Weekdays 08:00",
   effort: "high",
   maxTurns: 40,
-  task: ({ today }) => `Today is ${today}. Run the daily finance check:
-1. List outstanding payments.
-2. For clients with a Stripe customer ID, check Stripe for payments and paid invoices, and record any that cover an outstanding row.
-3. List what's still outstanding, grouped by client, with days overdue.
-4. Draft chaser emails (Gmail drafts) for rows 3, 7 or 14+ days overdue.
-5. If today is Friday, add the weekly cash summary: collected this week, collected this month, outstanding, and the three largest overdue amounts.`,
+  task: ({ today }) => {
+    const friday = new Date(`${today}T12:00:00Z`).getUTCDay() === 5;
+    return `Today is ${today}${friday ? " (Friday)" : ""}. Run the daily finance check:
+1. Call OS_GET_RECEIVABLES.
+2. If Stripe is connected, check for paid invoices from clients with a Stripe customer ID that still show as owed, and record any the webhook missed (with proof).
+3. For every client with chaserDue set, queue one chaser with OS_QUEUE_CHASER.
+4. List unmatched payments waiting for the owner, and anything that needs manual confirmation.${
+      friday ? "\n5. It's Friday: call OS_SAVE_CASH_SUMMARY with a two or three sentence commentary on what needs attention." : ""
+    }`;
+  },
 };

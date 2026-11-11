@@ -17,7 +17,7 @@ async function main() {
   const clients = await db
     .insert(schema.clients)
     .values([
-      { name: "Demo Paving Co", industry: "Paving", retainerExVat: 1500, vat: "plus", billingMethod: "stripe", cplTarget: 15, contactName: "Pat", email: "pat@example.com", startDate: "2026-03-01" },
+      { name: "Demo Paving Co", industry: "Paving", retainerExVat: 1500, vat: "plus", billingMethod: "stripe", stripeCustomerId: "cus_DemoPaving", cplTarget: 15, contactName: "Pat", email: "pat@example.com", startDate: "2026-03-01" },
       { name: "Demo Attic Conversions", industry: "Attics", retainerExVat: 3000, vat: "plus", billingMethod: "invoice", cplTarget: 10, contactName: "Mary", email: "mary@example.com", startDate: "2026-01-01" },
       { name: "Demo Bathrooms", industry: "Bathrooms", retainerExVat: 406.5, vat: "inc", billingMethod: "invoice", cplTarget: 15, contactName: "John", email: "john@example.com", startDate: "2026-05-01", reportRules: "Do NOT list leads. Give totals only." },
       { name: "Demo Garden Rooms", industry: "Garden rooms", retainerExVat: 900, vat: "plus", billingMethod: "revolut", cplTarget: 12, contactName: "Aoife", email: "aoife@example.com", status: "onboarding", startDate: today() },

@@ -1,0 +1,82 @@
+{
+  "id": "evt_PavingNovPaid",
+  "object": "event",
+  "api_version": "2026-10-28.endive",
+  "created": 1793873710,
+  "livemode": false,
+  "pending_webhooks": 1,
+  "request": {
+    "id": null,
+    "idempotency_key": null
+  },
+  "type": "invoice.paid",
+  "data": {
+    "object": {
+      "id": "in_DemoPavingNov",
+      "object": "invoice",
+      "account_country": "IE",
+      "currency": "eur",
+      "customer": "cus_DemoPaving",
+      "customer_name": "Demo Paving Co",
+      "customer_email": "pat@example.com",
+      "number": "1M-0042",
+      "status": "paid",
+      "amount_due": 184500,
+      "amount_paid": 184500,
+      "amount_remaining": 0,
+      "total": 184500,
+      "subtotal": 150000,
+      "attempt_count": 0,
+      "attempted": false,
+      "collection_method": "send_invoice",
+      "created": 1793494800,
+      "period_start": 1793491200,
+      "period_end": 1793491200,
+      "livemode": false,
+      "lines": {
+        "object": "list",
+        "has_more": false,
+        "url": "/v1/invoices/in_DemoPavingNov/lines",
+        "data": [
+          {
+            "id": "il_DemoPavingNov",
+            "object": "line_item",
+            "amount": 184500,
+            "currency": "eur",
+            "description": "Monthly retainer",
+            "period": {
+              "start": 1793491200,
+              "end": 1796083200
+            }
+          }
+        ]
+      },
+      "status_transitions": {
+        "finalized_at": 1793494800,
+        "marked_uncollectible_at": null,
+        "paid_at": 1793873700,
+        "voided_at": null
+      },
+      "payments": {
+        "object": "list",
+        "has_more": false,
+        "url": "/v1/invoice_payments?invoice=in_DemoPavingNov",
+        "data": [
+          {
+            "id": "inpay_DemoPavingNov",
+            "object": "invoice_payment",
+            "amount_paid": 184500,
+            "currency": "eur",
+            "invoice": "in_DemoPavingNov",
+            "is_default": true,
+            "status": "paid",
+            "payment": {
+              "type": "payment_intent",
+              "payment_intent": "pi_DemoPavingNov"
+            }
+          }
+        ]
+      }
+    }
+  }
+}

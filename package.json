@@ -14,7 +14,8 @@
     "seed:demo": "tsx scripts/seed-demo.ts",
     "import:notion": "tsx scripts/import-notion.ts",
     "connect": "tsx scripts/connect.ts",
-    "agent": "tsx src/cli.ts"
+    "agent": "tsx src/cli.ts",
+    "test:db": "TEST_DATABASE_URL=${TEST_DATABASE_URL:-postgres://postgres@localhost:5433/postgres} node --import tsx --test tests/*.test.ts"
   },
   "repository": {
     "type": "git",

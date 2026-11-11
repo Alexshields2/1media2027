@@ -25,6 +25,8 @@ export interface RunOptions {
   dryRun?: boolean;
   instruction?: string;
   trigger?: AgentRun["trigger"];
+  /** Model client override (tests pass a mock). Defaults to the Anthropic SDK with ANTHROPIC_API_KEY. */
+  client?: Anthropic;
 }
 
 export async function runAgent(agent: AgentDefinition, opts: RunOptions = {}): Promise<AgentRun> {
@@ -43,8 +45,8 @@ export async function runAgent(agent: AgentDefinition, opts: RunOptions = {}): P
   let status: AgentRun["status"] = "completed";
 
   try {
-    requireEnv("ANTHROPIC_API_KEY");
-    const client = new Anthropic();
+    if (!opts.client) requireEnv("ANTHROPIC_API_KEY");
+    const client = opts.client ?? new Anthropic();
     const composioTools = await loadComposioTools({ toolkits: agent.toolkits, tools: agent.tools });
     const tools = [...osToolDefs(agent.osTools ?? ALL_OS_TOOLS), ...composioTools] as Anthropic.Beta.BetaToolUnion[];
     const system = systemPrompt(agent, autonomy);
@@ -163,7 +165,7 @@ async function handleCall(
   try {
     let out: string;
     if (isOsTool(call.name)) {
-      out = await runOsTool(call.name, input);
+      out = await runOsTool(call.name, input, { runId, agent: agent.name });
     } else {
       const toolUse: AnthropicToolUseBlock = { type: "tool_use", id: call.id, name: call.name, input };
       out = await composio().provider.executeToolCall(config.composioUserId, toolUse);

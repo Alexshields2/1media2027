@@ -4,14 +4,22 @@ import { and, desc, eq, gte, inArray, ne, sql as dsql } from "drizzle-orm";
 import { db, schema } from "../db";
 import { recordPayment, paymentState, round2 } from "./billing";
 import { today, weekStart } from "./dates";
+import { queueChaser, receivables, saveCashSummary } from "./finance";
+import { listUnmatched } from "./reconcile";
 
 // Tools that let agents read and write the 1Media OS database.
 // Names start with OS_ so the guardrails treat them as internal.
 
+/** Who is calling a tool: set by the agent runner, absent when a human approves a queued action. */
+export interface OsToolContext {
+  runId?: number;
+  agent?: string;
+}
+
 interface OsTool {
   def: Anthropic.Tool;
   input: z.ZodType;
-  run: (input: any) => Promise<unknown>;
+  run: (input: any, ctx: OsToolContext) => Promise<unknown>;
 }
 
 const id = z.coerce.number().int().positive();
@@ -98,6 +106,68 @@ const tools: Record<string, OsTool> = {
     run: async (i) => {
       await recordPayment(i.payment_id, { amount: i.amount, paidDate: i.paid_date, method: i.method, note: i.note, stripeInvoiceId: i.stripe_invoice_id });
       return { ok: true };
+    },
+  },
+
+  OS_GET_RECEIVABLES: {
+    def: {
+      name: "OS_GET_RECEIVABLES",
+      description:
+        "Everything owed on rows already due, as of today: totals by age bucket (0-14, 15-30, 31-60, 60+ days past due), a balance per client with the chaser stage now due (3, 7 or 14 days; null if none or already queued), and every overdue row. Also returns unmatched incoming payments (Stripe or bank) waiting for the owner to assign. Use this instead of adding up payments yourself.",
+      input_schema: { type: "object", properties: {} },
+    },
+    input: z.object({}).passthrough(),
+    run: async () => {
+      const [r, unmatched] = await Promise.all([receivables(), listUnmatched()]);
+      return {
+        ...r,
+        unmatched: unmatched.map((u) => ({
+          id: u.id,
+          source: u.source,
+          date: u.receivedDate,
+          amount: u.remaining,
+          payer: u.payer,
+          reference: u.reference,
+          suggestions: u.live.map((s) => ({ paymentId: s.paymentId, client: s.row.clientName, period: s.row.period, score: s.score, reasons: s.reasons })),
+        })),
+      };
+    },
+  },
+
+  OS_QUEUE_CHASER: {
+    def: {
+      name: "OS_QUEUE_CHASER",
+      description:
+        "Queue a payment chaser email for the owner to approve. It is NOT sent: it waits on the Approvals page, addressed to the client's email on file. stage is the chaser stage from OS_GET_RECEIVABLES (3, 7 or 14 days overdue). One chaser per client per stage; repeats are skipped.",
+      input_schema: {
+        type: "object",
+        properties: {
+          client_id: { type: "integer" },
+          stage: { type: "string", enum: ["3", "7", "14"] },
+          subject: { type: "string" },
+          body: { type: "string", description: "The full email, signed \"Alex, 1Media\". Include the amount, the month(s) it covers and how to pay." },
+        },
+        required: ["client_id", "stage", "subject", "body"],
+      },
+    },
+    input: z.object({ client_id: id, stage: z.enum(["3", "7", "14"]), subject: z.string().min(3), body: z.string().min(20) }),
+    run: async (i, ctx) => queueChaser({ clientId: i.client_id, stage: i.stage, subject: i.subject, body: i.body, runId: ctx.runId, agent: ctx.agent }),
+  },
+
+  OS_SAVE_CASH_SUMMARY: {
+    def: {
+      name: "OS_SAVE_CASH_SUMMARY",
+      description:
+        "Build the weekly cash summary from the database (collected this week and month, outstanding, overdue by age bucket, forecast for the month, largest balances, unmatched payments), save it on the Payments page and post it to Slack when Slack is configured. Add a short commentary with anything the owner should act on. Returns the saved text.",
+      input_schema: {
+        type: "object",
+        properties: { commentary: { type: "string", description: "Two or three plain sentences: what needs attention." } },
+      },
+    },
+    input: z.object({ commentary: z.string().optional() }),
+    run: async (i, ctx) => {
+      const row = await saveCashSummary({ commentary: i.commentary, runId: ctx.runId });
+      return { ok: true, summary_id: row.id, posted_to_slack: row.postedToSlack, body: row.body };
     },
   },
 
@@ -309,12 +379,16 @@ export function isOsTool(name: string): boolean {
 }
 
 /** Validates the input, runs the tool and returns a JSON string for the model. */
-export async function runOsTool(name: string, rawInput: unknown): Promise<string> {
+export async function runOsTool(name: string, rawInput: unknown, ctx: OsToolContext = {}): Promise<string> {
   const t = tools[name];
   if (!t) throw new Error(`Unknown OS tool ${name}`);
   const parsed = t.input.safeParse(rawInput ?? {});
   if (!parsed.success) throw new Error(`Invalid input for ${name}: ${parsed.error.message}`);
-  return JSON.stringify(await t.run(parsed.data));
+  return JSON.stringify(await t.run(parsed.data, ctx));
 }
 
-export const ALL_OS_TOOLS = Object.keys(tools);
+/** Finance-only tools, left out of the default set so other agents can't queue chasers or post cash summaries. */
+const FINANCE_ONLY = ["OS_QUEUE_CHASER", "OS_SAVE_CASH_SUMMARY"];
+
+/** The default tool set for agents that don't list their own. */
+export const ALL_OS_TOOLS = Object.keys(tools).filter((n) => !FINANCE_ONLY.includes(n));

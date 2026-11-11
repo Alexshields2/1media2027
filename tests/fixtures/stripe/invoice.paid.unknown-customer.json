@@ -1,0 +1,62 @@
+{
+  "id": "evt_GardenNovPaid",
+  "object": "event",
+  "api_version": "2026-10-28.endive",
+  "created": 1793957410,
+  "livemode": false,
+  "pending_webhooks": 1,
+  "request": {
+    "id": null,
+    "idempotency_key": null
+  },
+  "type": "invoice.paid",
+  "data": {
+    "object": {
+      "id": "in_NewGardenNov",
+      "object": "invoice",
+      "account_country": "IE",
+      "currency": "eur",
+      "customer": "cus_NewGarden",
+      "customer_name": "Aoife Byrne",
+      "customer_email": "aoife@gardenrooms.example",
+      "number": "1M-0044",
+      "status": "paid",
+      "amount_due": 110700,
+      "amount_paid": 110700,
+      "amount_remaining": 0,
+      "total": 110700,
+      "subtotal": 90000,
+      "attempt_count": 0,
+      "attempted": false,
+      "collection_method": "send_invoice",
+      "created": 1793494800,
+      "period_start": 1793491200,
+      "period_end": 1793491200,
+      "livemode": false,
+      "lines": {
+        "object": "list",
+        "has_more": false,
+        "url": "/v1/invoices/in_NewGardenNov/lines",
+        "data": [
+          {
+            "id": "il_NewGardenNov",
+            "object": "line_item",
+            "amount": 110700,
+            "currency": "eur",
+            "description": "Monthly retainer",
+            "period": {
+              "start": 1793491200,
+              "end": 1796083200
+            }
+          }
+        ]
+      },
+      "status_transitions": {
+        "finalized_at": 1793494800,
+        "marked_uncollectible_at": null,
+        "paid_at": 1793957400,
+        "voided_at": null
+      }
+    }
+  }
+}
