@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { desc } from "drizzle-orm";
 import { db, schema } from "@/db";
+import { runState, runTone } from "@/lib/runs";
 import { AGENT_LIST } from "@/agents/registry";
 import { composioEnabled } from "@/lib/composio";
 import { runAgentAction } from "../actions";
@@ -79,7 +80,7 @@ export default async function AgentsPage({ searchParams }: { searchParams: Promi
                 </Link>
                 <span className="flex items-center gap-2 text-xs text-ink/50">
                   {r.toolCalls} calls{r.proposed ? ` · ${r.proposed} to approve` : ""}
-                  <Badge tone={r.status === "completed" ? "green" : r.status === "running" ? "blue" : r.status === "error" ? "red" : "yellow"}>{r.status}</Badge>
+                  <Badge tone={runTone(runState(r))}>{runState(r)}</Badge>
                 </span>
               </li>
             ))}

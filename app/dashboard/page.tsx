@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { desc, eq, ne, and, lte } from "drizzle-orm";
 import { db, schema } from "@/db";
+import { runState, runTone } from "@/lib/runs";
 import { mrr, monthTotals, overdue } from "@/lib/billing";
 import { eur, monthLabel, monthStart, today, weekStart } from "@/lib/dates";
 import { Badge, Card, Empty, PageHeader, Stat } from "../_components/ui";
@@ -123,7 +124,7 @@ export default async function Dashboard() {
                 <Link href={`/agents/runs/${r.id}`} className="truncate hover:underline">
                   <span className="font-medium">{r.agent}</span> <span className="text-ink/50">· {r.startedAt.toLocaleString("en-IE", { timeZone: "Europe/Dublin" })}</span>
                 </Link>
-                <Badge tone={r.status === "completed" ? "green" : r.status === "running" ? "blue" : r.status === "error" ? "red" : "yellow"}>{r.status}</Badge>
+                <Badge tone={runTone(runState(r))}>{runState(r)}</Badge>
               </li>
             ))}
           </ul>

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useFormStatus } from "react-dom";
 
 export function SubmitButton({ children, className, pendingText = "Working…" }: { children: React.ReactNode; className: string; pendingText?: string }) {
@@ -27,4 +28,14 @@ export function CopyButton({ text, className }: { text: string; className: strin
       {copied ? "Copied" : "Copy"}
     </button>
   );
+}
+
+/** Re-renders the current server page every few seconds (e.g. while an agent run is still going). */
+export function AutoRefresh({ everyMs = 3000 }: { everyMs?: number }) {
+  const router = useRouter();
+  useEffect(() => {
+    const t = setInterval(() => router.refresh(), everyMs);
+    return () => clearInterval(t);
+  }, [router, everyMs]);
+  return null;
 }

@@ -64,3 +64,124 @@ input[type="checkbox"] {
 select option {
   background: var(--color-panel);
 }
+
+/* Agent answers rendered from markdown */
+.md > * + * {
+  margin-top: 0.65em;
+}
+.md h1,
+.md h2,
+.md h3,
+.md h4 {
+  font-weight: 600;
+  line-height: 1.3;
+  margin-top: 1.1em;
+}
+.md h1 {
+  font-size: 1.15rem;
+}
+.md h2 {
+  font-size: 1.05rem;
+}
+.md h3,
+.md h4 {
+  font-size: 0.95rem;
+}
+.md > :first-child {
+  margin-top: 0;
+}
+.md ul {
+  list-style: disc;
+  padding-left: 1.25em;
+}
+.md ol {
+  list-style: decimal;
+  padding-left: 1.4em;
+}
+.md li + li {
+  margin-top: 0.25em;
+}
+.md li > ul,
+.md li > ol {
+  margin-top: 0.25em;
+}
+.md strong {
+  font-weight: 600;
+  color: #fff;
+}
+.md a {
+  color: var(--color-brand-light);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.md code {
+  border-radius: 4px;
+  background: rgb(238 244 251 / 0.07);
+  padding: 0.1em 0.35em;
+  font-size: 0.85em;
+}
+.md pre {
+  overflow-x: auto;
+  border: 1px solid var(--color-line);
+  border-radius: 8px;
+  background: var(--color-canvas);
+  padding: 0.75em;
+}
+.md pre code {
+  background: none;
+  padding: 0;
+}
+.md blockquote {
+  border-left: 2px solid var(--color-brand);
+  padding-left: 0.75em;
+  color: rgb(238 244 251 / 0.7);
+}
+.md hr {
+  border-color: var(--color-line);
+}
+.md-table {
+  overflow-x: auto;
+}
+.md table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85em;
+}
+.md th,
+.md td {
+  border-bottom: 1px solid var(--color-line);
+  padding: 0.35em 0.6em;
+  text-align: left;
+  font-variant-numeric: tabular-nums;
+}
+.md th {
+  font-weight: 600;
+  color: rgb(238 244 251 / 0.6);
+}
+
+/* Jarvis "thinking" dots */
+@keyframes jarvis-pulse {
+  0%,
+  80%,
+  100% {
+    opacity: 0.25;
+  }
+  40% {
+    opacity: 1;
+  }
+}
+.thinking span {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  margin: 0 1.5px;
+  border-radius: 9999px;
+  background: var(--color-brand-light);
+  animation: jarvis-pulse 1.2s infinite ease-in-out;
+}
+.thinking span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+.thinking span:nth-child(3) {
+  animation-delay: 0.3s;
+}
