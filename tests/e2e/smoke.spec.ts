@@ -37,9 +37,11 @@ test("signed-out visitors are sent to /login, which shows the logo", async ({ pa
 
 test("wrong password is rejected", async ({ page }) => {
   await page.goto("/login");
+  const email = page.getByLabel("Email");
+  if (await email.isVisible()) await email.fill(process.env.OWNER_EMAIL ?? "owner@example.com");
   await page.getByLabel("Password").fill("definitely-wrong");
   await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page.getByText("Wrong password.")).toBeVisible();
+  await expect(page.getByText(/Wrong (email or )?password\./)).toBeVisible();
 });
 
 test.describe("signed in", () => {
@@ -47,6 +49,10 @@ test.describe("signed in", () => {
     const password = process.env.ADMIN_PASSWORD;
     if (!password) throw new Error("ADMIN_PASSWORD must be set for the e2e smoke test");
     await page.goto("/login");
+    // First sign-in (no accounts yet) asks only for ADMIN_PASSWORD and creates the OWNER_EMAIL owner;
+    // after that the form asks for email + password.
+    const email = page.getByLabel("Email");
+    if (await email.isVisible()) await email.fill(process.env.OWNER_EMAIL ?? "owner@example.com");
     await page.getByLabel("Password").fill(password);
     await page.getByRole("button", { name: "Sign in" }).click();
     await expect(page).toHaveURL(/\/$/);

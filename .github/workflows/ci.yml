@@ -53,6 +53,7 @@ jobs:
       DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
       ADMIN_PASSWORD: ci-smoke-password
       AUTH_SECRET: ci-smoke-secret
+      OWNER_EMAIL: owner@example.com
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
