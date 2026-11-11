@@ -28,6 +28,8 @@ export const clients = pgTable("clients", {
   reportRules: text("report_rules"),
   goals: text("goals"),
   notes: text("notes"),
+  // Notion pages this client was imported from (Client Portals, Monthly Reports, Sales CRM). Keeps re-imports idempotent.
+  notionIds: text("notion_ids").array().notNull().default([]),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -45,10 +47,11 @@ export const payments = pgTable(
     paidDate: date("paid_date"),
     method: text("method", { enum: ["stripe", "invoice", "revolut", "aib", "cash"] }),
     stripeInvoiceId: text("stripe_invoice_id"),
+    notionPageId: text("notion_page_id"), // Payment Collection row this was imported from
     notes: text("notes"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [uniqueIndex("payments_client_period_label").on(t.clientId, t.period, t.label)],
+  (t) => [uniqueIndex("payments_client_period_label").on(t.clientId, t.period, t.label), uniqueIndex("payments_notion_page").on(t.notionPageId)],
 );
 
 export const tasks = pgTable(

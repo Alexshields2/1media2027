@@ -61,15 +61,38 @@ Agents use Claude (Anthropic API). They reach Gmail, Calendar, Drive, Meta Ads, 
 
 ## Bring your data across from Notion (read-only)
 
-```bash
-NOTION_TOKEN=secret_xxx npm run import:notion
-```
+`npm run import:notion` copies clients and payment history from the old Notion OS into 1Media OS. It only ever *reads* Notion (the one Notion call it can make is "query a database"). It's safe to run more than once: it only fills in blanks, never overwrites what's been edited in 1Media OS, and never duplicates a payment.
 
-This imports clients and payment history from the old Notion OS and writes nothing to Notion. Set up the token like this:
-1. Create an internal integration at notion.so/profile/integrations.
-2. Share "Client Portals" and "Payment Collection" with it.
+**What it does**
+- **Clients:** merges the three Notion client lists into one: *Client Portals* (the main one), *Client Data Base For Monthly Reports* and the **Won** rows of *Sales CRM*. Rows are the same client when they link to each other, their names match after tidying (case, punctuation, "Ltd", "&"…), or a CRM/monthly row shares an email with a portal. Where lists disagree, Client Portals wins. Prospects (any other CRM stage) are skipped.
+- **Payments:** every *Payment Collection* row becomes a payment for that client and month. If the monthly billing job (or someone) already made that client's row for that month, the Notion data fills it in instead of adding a second one. `Paid` ticked with no `Amount Collected` counts as paid in full. Money already recorded in 1Media OS (e.g. by Stripe) is never lowered.
+- **Report:** at the end it lists what it created, merged, filled in and skipped (with the reason), every Notion field that has data but no place in 1Media OS, and anything to check by hand.
 
-After importing, fill in each client's Meta ad account IDs, GHL location, CPL target and report rules in the app.
+**One-time set-up (owner)**
+1. Create an internal integration at notion.so/profile/integrations with **Read content** only. Copy its secret.
+2. In Notion, open each of these databases → **•••** → **Connections** → add the integration: *Client Portals*, *Payment Collection*, *Client Data Base For Monthly Reports*, *Sales CRM*. (The first two are required; the import reports and skips either of the others if it can't see it.)
+
+**Running it against production (CTO)**
+
+Run from a laptop or session with the repo checked out and `npm install` done. Use the production database's **direct** (non-pooled) connection string.
+
+1. Rehearse on fake data, no database needed:
+   ```bash
+   npm run import:notion -- --fixtures tests/fixtures/notion --dry-run
+   ```
+2. Dry run against real Notion and production. Writes nothing; read the whole report:
+   ```bash
+   NOTION_TOKEN=ntn_xxx DATABASE_URL='postgres://…' npm run import:notion -- --dry-run
+   ```
+   Fix anything odd in Notion first (e.g. a duplicate payment row, a client that merged wrongly) and dry-run again. `--json` prints the full plan.
+3. Import for real. All writes happen in one transaction, so it either completes or changes nothing:
+   ```bash
+   NOTION_TOKEN=ntn_xxx DATABASE_URL='postgres://…' npm run import:notion
+   ```
+4. Run it once more: it should say everything is already up to date.
+5. Open **Clients**: the *Set up* column and each client's set-up checklist show what's still missing (Meta ad account IDs, GHL location, Stripe customer for Stripe clients, CPL target, report rules, report greeting).
+
+The script reads the database ids from `NOTION_CLIENTS_DS`, `NOTION_PAYMENTS_DS`, `NOTION_MONTHLY_DS` and `NOTION_CRM_DS` if set, otherwise from the ids of the current Notion OS.
 
 ## Run locally
 
@@ -121,5 +144,7 @@ src/lib/billing.ts      VAT, monthly rows, payment state, totals
 src/agents/             one folder per agent: settings and playbook
 drizzle/                database migrations
 scripts/                demo seed, Notion import, Composio connect
-tests/                  unit tests
+src/lib/notion-import/  Notion import: read, dedupe, plan, report (pure logic in plan.ts)
+src/lib/setup.ts        client set-up checklist
+tests/                  unit tests (tests/fixtures/notion: fake Notion API responses)
 ```

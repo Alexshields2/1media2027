@@ -4,6 +4,7 @@ import { desc, eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { paymentState } from "@/lib/billing";
 import { eur, monthLabel } from "@/lib/dates";
+import { setupProgress } from "@/lib/setup";
 import { updateClient } from "../../actions";
 import { Badge, Card, Empty, PageHeader } from "../../_components/ui";
 import { ClientForm } from "../client-form";
@@ -25,6 +26,8 @@ export default async function ClientPage({ params }: { params: Promise<{ id: str
     db.select().from(schema.reports).where(eq(schema.reports.clientId, id)).orderBy(desc(schema.reports.createdAt)).limit(8),
   ]);
 
+  const setup = setupProgress(client);
+
   return (
     <>
       <PageHeader title={client.name} subtitle={<Link href="/clients" className="hover:underline">← All clients</Link>} />
@@ -35,6 +38,41 @@ export default async function ClientPage({ params }: { params: Promise<{ id: str
           </Card>
         </div>
         <div className="space-y-6">
+          <Card title="Set-up checklist" actions={<Badge tone={setup.complete ? "green" : "yellow"}>{setup.complete ? "Complete" : `${setup.done} of ${setup.total}`}</Badge>}>
+            <div
+              className="h-1.5 overflow-hidden rounded-full bg-ink/10"
+              role="progressbar"
+              aria-label="Set-up progress"
+              aria-valuemin={0}
+              aria-valuemax={setup.total}
+              aria-valuenow={setup.done}
+            >
+              <div className={`h-full rounded-full ${setup.complete ? "bg-emerald-400" : "brand-gradient"}`} style={{ width: `${Math.round((setup.done / setup.total) * 100)}%` }} />
+            </div>
+            <ul className="mt-3 space-y-2 text-sm">
+              {setup.items.map((i) => (
+                <li key={i.key} className="flex gap-2.5">
+                  <span
+                    aria-hidden
+                    className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${i.done ? "bg-emerald-500/15 text-emerald-300" : "ring-1 ring-inset ring-amber-400/50"}`}
+                  >
+                    {i.done ? "✓" : ""}
+                  </span>
+                  <span className="min-w-0">
+                    {i.done ? (
+                      <span className="text-ink/70">{i.label}</span>
+                    ) : (
+                      <a href={`#${i.field}`} className="font-medium text-amber-300 hover:underline">
+                        {i.add}
+                      </a>
+                    )}
+                    <span className="sr-only">{i.done ? " (done)" : " (missing)"}</span>
+                    {!i.done && <span className="block text-xs text-ink/50">{i.why}</span>}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </Card>
           <Card title="Payments">
             {payments.length ? (
               <ul className="divide-y divide-line/70 text-sm">
