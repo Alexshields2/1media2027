@@ -107,6 +107,39 @@ npm test
 npm run agent -- finance --dry-run
 ```
 
+## Development
+
+**Local Postgres.** Any Postgres 16 works. With Docker:
+
+```bash
+docker run -d --name om-pg -p 5432:5432 -e POSTGRES_PASSWORD=postgres postgres:16
+export DATABASE_URL=postgres://postgres:postgres@localhost:5432/postgres
+```
+
+**Migrate and seed.** `node scripts/migrate.mjs` applies `drizzle/` migrations (the build does this too); `npm run seed:demo` adds demo clients to an empty database. After editing `src/db/schema.ts`, run `npm run db:generate` and commit the new migration.
+
+**Checks** (the same ones CI runs on every pull request):
+
+```bash
+npm run typecheck
+npm test
+npm run build
+```
+
+**End-to-end smoke test.** Logs in and loads every page against a production build and the seeded database, failing on any non-200, missing heading or browser console error:
+
+```bash
+npx playwright install chromium   # once
+export ADMIN_PASSWORD=dev AUTH_SECRET=dev
+npm run build && npm run test:e2e
+```
+
+Set `PW_CHROMIUM_PATH` to use an already-installed Chromium, or `E2E_BASE_URL` to test a running deployment instead of starting `next start`.
+
+**CI.** `.github/workflows/ci.yml` runs typecheck, unit tests and build, and in parallel the smoke test against a Postgres service container. To block merges on failure, add both jobs as required checks in GitHub → Settings → Branches.
+
+**Monitoring.** `GET /api/health` (no login) returns `{ ok, db, version }`, with status 503 if the database doesn't answer within 3 seconds; point an uptime monitor at it. Uncaught server errors are logged as one JSON line (`"source":"1media-os"`, searchable in Vercel → Logs) by `instrumentation.ts`, and, when `SLACK_WEBHOOK_URL` is set, posted to Slack (each distinct error at most once per 10 minutes, at most 5 alerts per 10 minutes per server instance).
+
 ## Code map
 
 ```
@@ -121,5 +154,6 @@ src/lib/billing.ts      VAT, monthly rows, payment state, totals
 src/agents/             one folder per agent: settings and playbook
 drizzle/                database migrations
 scripts/                demo seed, Notion import, Composio connect
-tests/                  unit tests
+instrumentation.ts      server error reporting (logs + Slack alerts)
+tests/                  unit tests; tests/e2e/ Playwright smoke test
 ```

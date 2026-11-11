@@ -14,7 +14,8 @@
     "seed:demo": "tsx scripts/seed-demo.ts",
     "import:notion": "tsx scripts/import-notion.ts",
     "connect": "tsx scripts/connect.ts",
-    "agent": "tsx src/cli.ts"
+    "agent": "tsx src/cli.ts",
+    "test:e2e": "playwright test"
   },
   "repository": {
     "type": "git",
@@ -38,6 +39,7 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@playwright/test": "^1.65.0",
     "@tailwindcss/postcss": "^4.3.5",
     "@types/node": "^26.6.6",
     "@types/react": "^19.3.0",
