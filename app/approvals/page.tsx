@@ -80,7 +80,7 @@ export default async function ApprovalsPage() {
 
       <Card title="Recently decided" className="mt-6">
         {recent.length ? (
-          <ul className="divide-y divide-ink/5 text-sm">
+          <ul className="divide-y divide-line/70 text-sm">
             {recent.map((a) => (
               <li key={a.id} className="py-2">
                 <div className="flex items-center justify-between gap-2">

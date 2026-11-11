@@ -40,7 +40,7 @@ export function Nav({ owner }: { owner: string }) {
   return (
     <>
       {/* Desktop sidebar */}
-      <aside className="hidden md:sticky md:top-0 md:flex md:h-screen md:w-60 md:shrink-0 md:flex-col md:border-r md:border-ink/[0.06] md:bg-sidebar">
+      <aside className="hidden md:sticky md:top-0 md:flex md:h-screen md:w-60 md:shrink-0 md:flex-col md:border-r md:border-line md:bg-sidebar">
         <Link href="/" className="px-5 pt-6 pb-5">
           <Logo sub="Operating system" />
         </Link>
@@ -63,7 +63,7 @@ export function Nav({ owner }: { owner: string }) {
             </div>
           ))}
         </nav>
-        <div className="m-3 rounded-xl border border-ink/[0.06] bg-panel p-3">
+        <div className="m-3 rounded-xl border border-line bg-panel p-3">
           <div className="flex items-center gap-2.5">
             <span className="brand-gradient grid size-8 place-items-center rounded-full text-xs font-bold text-white">{owner.slice(0, 1).toUpperCase()}</span>
             <span className="min-w-0 leading-tight">
@@ -80,7 +80,7 @@ export function Nav({ owner }: { owner: string }) {
       </aside>
 
       {/* Mobile top nav */}
-      <div className="border-b border-ink/[0.06] bg-sidebar md:hidden">
+      <div className="border-b border-line bg-sidebar md:hidden">
         <div className="flex items-center justify-between px-4 py-3">
           <Link href="/">
             <Logo />

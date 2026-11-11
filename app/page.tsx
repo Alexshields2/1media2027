@@ -6,7 +6,6 @@ import { eur, monthLabel, monthStart, today, weekStart } from "@/lib/dates";
 import { runAgentAction } from "./actions";
 import { Badge } from "./_components/ui";
 import { Icon } from "./_components/icons";
-import { LogoMark } from "./_components/logo";
 import { SubmitButton } from "./_components/client-bits";
 import { greeting, ownerName } from "./_components/owner";
 
@@ -57,21 +56,21 @@ export default async function Home() {
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
       {/* Centre: greeting + Ask Jarvis */}
-      <section className="home-glow flex min-h-[70vh] flex-col items-center justify-center rounded-2xl border border-ink/[0.06] bg-panel/40 px-4 py-12">
-        <div className="flex items-center gap-2 rounded-full border border-ink/[0.08] bg-panel px-3 py-1 text-[11px] font-medium tracking-[0.14em] text-ink/50 uppercase">
-          <LogoMark className="h-3.5 w-3" /> 1Media OS · Jarvis
+      <section className="home-glow flex min-h-[70vh] flex-col items-center justify-center rounded-2xl border border-line bg-panel/40 px-4 py-12">
+        <div className="flex items-center gap-2 rounded-full border border-line bg-panel px-3 py-1 text-[11px] font-medium tracking-[0.22em] text-ink/70 uppercase">
+          <span className="dot" /> 1Media OS · Jarvis
         </div>
-        <h1 className="mt-5 text-center text-3xl font-semibold tracking-tight md:text-4xl">
+        <h1 className="mt-6 text-center text-4xl font-bold tracking-[-0.03em] md:text-5xl">
           {greeting()}, <span className="brand-text">{ownerName()}</span>
         </h1>
         <p className="mt-2 text-center text-sm text-ink/50">Ask about any client, payment, report or task. Jarvis reads the whole OS.</p>
 
         <form action={runAgentAction} className="mt-8 w-full max-w-xl">
           <input type="hidden" name="agent" value="jarvis" />
-          <div className="flex items-center gap-2 rounded-2xl border border-ink/[0.1] bg-panel p-2 pl-4 shadow-2xl shadow-black/40 focus-within:border-brand/60">
+          <div className="flex items-center gap-2 rounded-2xl border border-line bg-panel p-2 pl-4 shadow-[0_0_40px_rgb(4_153_242/0.10)] focus-within:border-brand/60">
             <Icon name="spark" className="size-4 shrink-0 text-brand-light" />
             <input name="instruction" required placeholder="Ask Jarvis anything…" className="min-w-0 flex-1 bg-transparent py-2 text-sm outline-none placeholder:text-ink/35" />
-            <SubmitButton className="brand-gradient grid size-9 shrink-0 place-items-center rounded-xl text-white disabled:opacity-50" pendingText="…">
+            <SubmitButton className="brand-gradient grid size-9 shrink-0 place-items-center rounded-full shadow-[0_0_18px_rgb(4_153_242/0.5)] text-white disabled:opacity-50" pendingText="…">
               <Icon name="send" className="size-4" />
             </SubmitButton>
           </div>
@@ -81,7 +80,7 @@ export default async function Home() {
             <form key={s} action={runAgentAction}>
               <input type="hidden" name="agent" value="jarvis" />
               <input type="hidden" name="instruction" value={s} />
-              <button className="rounded-full border border-ink/[0.08] bg-panel px-3 py-1.5 text-xs text-ink/60 hover:border-brand/40 hover:text-ink">{s}</button>
+              <button className="rounded-full border border-line bg-panel px-3 py-1.5 text-xs text-ink/60 hover:border-brand/40 hover:text-ink">{s}</button>
             </form>
           ))}
         </div>
@@ -94,7 +93,7 @@ export default async function Home() {
             { href: "/tasks", label: "New task" },
             { href: "/reports", label: "Reports" },
           ].map((q) => (
-            <Link key={q.href} href={q.href} className="rounded-xl border border-ink/[0.06] bg-panel px-3 py-2.5 text-center text-xs text-ink/60 hover:border-ink/[0.15] hover:text-ink">
+            <Link key={q.href} href={q.href} className="rounded-xl border border-line bg-panel px-3 py-2.5 text-center text-xs text-ink/60 hover:border-brand/40 hover:text-ink">
               {q.label}
             </Link>
           ))}
@@ -173,7 +172,7 @@ export default async function Home() {
 
 function Rail({ title, count, href, children }: { title: string; count?: number; href: string; children: React.ReactNode }) {
   return (
-    <section className="rounded-2xl border border-ink/[0.06] bg-panel p-4">
+    <section className="rounded-2xl border border-line bg-panel p-4">
       <div className="mb-3 flex items-center justify-between">
         <h2 className="flex items-center gap-2 text-sm font-semibold">
           {title}
@@ -190,7 +189,7 @@ function Rail({ title, count, href, children }: { title: string; count?: number;
 
 function Num({ label, value, hint, tone }: { label: string; value: string; hint?: string; tone?: "good" | "bad" }) {
   return (
-    <div className="rounded-xl border border-ink/[0.06] bg-canvas/60 p-3">
+    <div className="rounded-xl border border-line bg-canvas/60 p-3">
       <div className="text-[11px] text-ink/45">{label}</div>
       <div className={`num mt-0.5 text-lg font-semibold ${tone === "bad" ? "text-red-400" : tone === "good" ? "text-emerald-400" : ""}`}>{value}</div>
       {hint && <div className="text-[11px] text-ink/35">{hint}</div>}

@@ -85,7 +85,7 @@ export default async function TasksPage({ searchParams }: { searchParams: Promis
               {items.length ? (
                 <ul className="space-y-2">
                   {items.map(({ t, client }) => (
-                    <li key={t.id} className="rounded-lg border border-ink/10 p-3 text-sm">
+                    <li key={t.id} className="rounded-lg border border-line p-3 text-sm">
                       <div className="font-medium">{t.title}</div>
                       <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-ink/50">
                         {client && (
@@ -101,7 +101,7 @@ export default async function TasksPage({ searchParams }: { searchParams: Promis
                       <div className="mt-2 flex gap-1.5">
                         {NEXT[t.status].map((n) => (
                           <form key={n.to} action={setTaskStatus.bind(null, t.id, n.to)}>
-                            <button className="rounded border border-ink/10 px-2 py-0.5 text-xs hover:bg-ink/5">{n.label}</button>
+                            <button className="rounded border border-line px-2 py-0.5 text-xs hover:bg-ink/5">{n.label}</button>
                           </form>
                         ))}
                       </div>

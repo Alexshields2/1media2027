@@ -1,17 +1,19 @@
 @import "tailwindcss";
+@import "@fontsource-variable/inter";
 
-/* 1Media brand: dark workspace, logo blue (light sky blue -> deep blue). */
+/* 1Media brand, matched to 1media.ie: deep navy, sky-to-cyan blue with a glow, thin blue outlines. */
 @theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-  --color-brand: #3d8fe6;
-  --color-brand-light: #7cc6f7;
-  --color-brand-deep: #1c5fb8;
-  --color-brand-soft: rgb(61 143 230 / 0.14);
-  /* "ink" is the foreground (text, borders at low opacity); "panel" is a raised surface. */
-  --color-ink: #e9edf3;
-  --color-panel: #171a21;
-  --color-canvas: #0f1116;
-  --color-sidebar: #12141a;
+  --font-sans: "Inter Variable", "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --color-brand: #0499f2;
+  --color-brand-light: #38c4fa;
+  --color-brand-deep: #0369c9;
+  --color-brand-soft: rgb(4 153 242 / 0.12);
+  /* "ink" = foreground; "line" = the blue hairline outline; "panel" = raised navy surface. */
+  --color-ink: #eef4fb;
+  --color-line: #13284a;
+  --color-panel: #061126;
+  --color-canvas: #020617;
+  --color-sidebar: #030c1d;
 }
 
 :root {
@@ -28,19 +30,31 @@ body {
 }
 
 .brand-gradient {
-  background-image: linear-gradient(135deg, var(--color-brand-light), var(--color-brand) 55%, var(--color-brand-deep));
+  background-image: linear-gradient(135deg, #38c4fa, #0499f2 55%, #0369c9);
 }
 
+/* Gradient headline text with the site's soft blue glow */
 .brand-text {
-  background-image: linear-gradient(90deg, var(--color-brand-light), var(--color-brand));
+  background-image: linear-gradient(90deg, #38c4fa, #0ea5f5 60%, #0499f2);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+  filter: drop-shadow(0 0 22px rgb(14 165 245 / 0.35));
 }
 
-/* Soft glow behind the home greeting */
+/* Glow behind the home greeting and login */
 .home-glow {
-  background: radial-gradient(60% 50% at 50% 40%, rgb(61 143 230 / 0.12), transparent 70%);
+  background: radial-gradient(55% 45% at 50% 42%, rgb(4 153 242 / 0.16), transparent 70%);
+}
+
+/* Small blue status dot, as in the site's eyebrow pill */
+.dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: #0ea5f5;
+  box-shadow: 0 0 8px rgb(14 165 245 / 0.8);
 }
 
 input[type="checkbox"] {

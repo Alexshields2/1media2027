@@ -45,7 +45,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
             >
               <div id={`r${r.id}`} />
               <form action={updateReportBody.bind(null, r.id)}>
-                <textarea name="body" defaultValue={r.body} rows={Math.min(24, r.body.split("\n").length + 1)} className="w-full rounded-md border border-ink/10 bg-ink/[0.02] p-3 font-mono text-[13px] leading-relaxed outline-none focus:border-brand" />
+                <textarea name="body" defaultValue={r.body} rows={Math.min(24, r.body.split("\n").length + 1)} className="w-full rounded-md border border-line bg-ink/[0.02] p-3 font-mono text-[13px] leading-relaxed outline-none focus:border-brand" />
                 <div className="mt-2 flex flex-wrap gap-2">
                   <CopyButton text={r.body} className={btn} />
                   <SubmitButton className={btnGhost}>Save edits</SubmitButton>

@@ -54,7 +54,7 @@ export default async function HealthPage() {
                     <Badge tone="green">resolved</Badge>
                   ) : h.status !== "green" ? (
                     <form action={resolveHealth.bind(null, h.id)}>
-                      <button className="rounded border border-ink/10 px-2 py-0.5 text-xs hover:bg-ink/5">Resolve</button>
+                      <button className="rounded border border-line px-2 py-0.5 text-xs hover:bg-ink/5">Resolve</button>
                     </form>
                   ) : null}
                 </td>

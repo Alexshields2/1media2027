@@ -37,7 +37,7 @@ export default async function ClientPage({ params }: { params: Promise<{ id: str
         <div className="space-y-6">
           <Card title="Payments">
             {payments.length ? (
-              <ul className="divide-y divide-ink/5 text-sm">
+              <ul className="divide-y divide-line/70 text-sm">
                 {payments.map((p) => {
                   const s = paymentState(p);
                   return (
@@ -59,7 +59,7 @@ export default async function ClientPage({ params }: { params: Promise<{ id: str
           </Card>
           <Card title="Health">
             {health.length ? (
-              <ul className="divide-y divide-ink/5 text-sm">
+              <ul className="divide-y divide-line/70 text-sm">
                 {health.map((h) => (
                   <li key={h.id} className="py-2">
                     <div className="flex items-center justify-between">
@@ -76,7 +76,7 @@ export default async function ClientPage({ params }: { params: Promise<{ id: str
           </Card>
           <Card title="Tasks">
             {tasks.length ? (
-              <ul className="divide-y divide-ink/5 text-sm">
+              <ul className="divide-y divide-line/70 text-sm">
                 {tasks.map((t) => (
                   <li key={t.id} className="flex items-center justify-between gap-2 py-2">
                     <span className={t.status === "done" ? "text-ink/40 line-through" : ""}>{t.title}</span>
@@ -90,7 +90,7 @@ export default async function ClientPage({ params }: { params: Promise<{ id: str
           </Card>
           <Card title="Reports">
             {reports.length ? (
-              <ul className="divide-y divide-ink/5 text-sm">
+              <ul className="divide-y divide-line/70 text-sm">
                 {reports.map((r) => (
                   <li key={r.id} className="flex items-center justify-between py-2">
                     <Link href={`/reports#r${r.id}`} className="hover:underline">

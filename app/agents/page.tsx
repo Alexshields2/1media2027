@@ -66,7 +66,7 @@ export default async function AgentsPage({ searchParams }: { searchParams: Promi
 
       <Card title="Recent runs" className="mt-6">
         {runs.length ? (
-          <ul className="divide-y divide-ink/5 text-sm">
+          <ul className="divide-y divide-line/70 text-sm">
             {runs.map((r) => (
               <li key={r.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
                 <Link href={`/agents/runs/${r.id}`} className="hover:underline">

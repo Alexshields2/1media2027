@@ -45,7 +45,7 @@ export default async function Dashboard() {
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
         <Card title="Needs your OK" actions={<Link href="/approvals" className="text-xs text-brand">All approvals →</Link>}>
           {pending.length ? (
-            <ul className="divide-y divide-ink/5 text-sm">
+            <ul className="divide-y divide-line/70 text-sm">
               {pending.map((a) => (
                 <li key={a.id} className="flex items-center justify-between gap-3 py-2">
                   <span className="truncate">
@@ -62,7 +62,7 @@ export default async function Dashboard() {
 
         <Card title="Clients needing attention this week" actions={<Link href="/health" className="text-xs text-brand">Client health →</Link>}>
           {health.length ? (
-            <ul className="divide-y divide-ink/5 text-sm">
+            <ul className="divide-y divide-line/70 text-sm">
               {health.map(({ h, client }) => (
                 <li key={h.id} className="py-2">
                   <div className="flex items-center justify-between gap-2">
@@ -80,7 +80,7 @@ export default async function Dashboard() {
 
         <Card title="Overdue payments" actions={<Link href="/payments" className="text-xs text-brand">Payments →</Link>}>
           {late.length ? (
-            <ul className="divide-y divide-ink/5 text-sm">
+            <ul className="divide-y divide-line/70 text-sm">
               {late.slice(0, 8).map((p) => (
                 <li key={p.id} className="flex items-center justify-between gap-3 py-2">
                   <span>
@@ -99,7 +99,7 @@ export default async function Dashboard() {
 
         <Card title="Tasks due" actions={<Link href="/tasks" className="text-xs text-brand">Tasks →</Link>}>
           {dueTasks.length ? (
-            <ul className="divide-y divide-ink/5 text-sm">
+            <ul className="divide-y divide-line/70 text-sm">
               {dueTasks.map(({ t, client }) => (
                 <li key={t.id} className="flex items-center justify-between gap-3 py-2">
                   <span className="min-w-0 truncate">
@@ -117,7 +117,7 @@ export default async function Dashboard() {
 
       <Card title="Recent agent runs" className="mt-6" actions={<Link href="/agents" className="text-xs text-brand">Agents →</Link>}>
         {runs.length ? (
-          <ul className="divide-y divide-ink/5 text-sm">
+          <ul className="divide-y divide-line/70 text-sm">
             {runs.map((r) => (
               <li key={r.id} className="flex items-center justify-between gap-3 py-2">
                 <Link href={`/agents/runs/${r.id}`} className="truncate hover:underline">
