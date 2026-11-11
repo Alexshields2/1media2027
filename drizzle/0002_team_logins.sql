@@ -30,7 +30,6 @@ CREATE TABLE "users" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-ALTER TABLE "agent_runs" ADD COLUMN "error" text;--> statement-breakpoint
 ALTER TABLE "approvals" ADD COLUMN "decided_by" integer;--> statement-breakpoint
 ALTER TABLE "audit_log" ADD CONSTRAINT "audit_log_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "sessions" ADD CONSTRAINT "sessions_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
@@ -38,6 +37,4 @@ CREATE INDEX "audit_action_time" ON "audit_log" USING btree ("action","created_a
 CREATE INDEX "audit_time" ON "audit_log" USING btree ("created_at");--> statement-breakpoint
 CREATE INDEX "sessions_user" ON "sessions" USING btree ("user_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "users_email" ON "users" USING btree ("email");--> statement-breakpoint
-ALTER TABLE "approvals" ADD CONSTRAINT "approvals_decided_by_users_id_fk" FOREIGN KEY ("decided_by") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-CREATE INDEX "agent_runs_agent_started" ON "agent_runs" USING btree ("agent","started_at");--> statement-breakpoint
-CREATE INDEX "agent_runs_status_started" ON "agent_runs" USING btree ("status","started_at");
+ALTER TABLE "approvals" ADD CONSTRAINT "approvals_decided_by_users_id_fk" FOREIGN KEY ("decided_by") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;

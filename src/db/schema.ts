@@ -199,6 +199,77 @@ export const approvals = pgTable(
   (t) => [index("approvals_status").on(t.status)],
 );
 
+/**
+ * Money that arrived (a Stripe invoice payment or a bank credit from a CSV upload), before and after
+ * it is matched to payment rows. Stripe payments matched by customer are applied automatically;
+ * bank credits only ever get suggestions, and the owner confirms them on the Payments page.
+ */
+export const incomingPayments = pgTable(
+  "incoming_payments",
+  {
+    id: serial("id").primaryKey(),
+    source: text("source", { enum: ["stripe", "bank"] }).notNull(),
+    /** Dedupe key: Stripe "<invoice id>@<cumulative cents>", bank transaction ID or a row hash. */
+    externalId: text("external_id").notNull(),
+    receivedDate: date("received_date").notNull(),
+    amount: money("amount").notNull(),
+    /** How much of amount has been applied to payment rows. */
+    allocated: money("allocated").notNull().default(0),
+    currency: text("currency").notNull().default("EUR"),
+    payer: text("payer"),
+    reference: text("reference"),
+    description: text("description"),
+    bankFormat: text("bank_format"),
+    sourceFile: text("source_file"),
+    stripeCustomerId: text("stripe_customer_id"),
+    stripeInvoiceId: text("stripe_invoice_id"),
+    stripePaymentIntentId: text("stripe_payment_intent_id"),
+    clientId: integer("client_id").references(() => clients.id, { onDelete: "set null" }),
+    status: text("status", { enum: ["unmatched", "matched", "ignored"] }).notNull().default("unmatched"),
+    matchedBy: text("matched_by", { enum: ["stripe-customer", "amount-period", "owner"] }),
+    allocations: jsonb("allocations").$type<Allocation[]>().notNull().default([]),
+    suggestions: jsonb("suggestions").$type<MatchSuggestion[]>().notNull().default([]),
+    notes: text("notes"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+  },
+  (t) => [
+    uniqueIndex("incoming_source_external").on(t.source, t.externalId),
+    index("incoming_status").on(t.status),
+    index("incoming_stripe_invoice").on(t.stripeInvoiceId),
+  ],
+);
+
+/** Every Stripe webhook event we have handled, so retries are no-ops. */
+export const stripeEvents = pgTable("stripe_events", {
+  id: text("id").primaryKey(), // evt_...
+  type: text("type").notNull(),
+  outcome: text("outcome").notNull(),
+  receivedAt: timestamp("received_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** The finance agent's weekly cash summary (also posted to Slack when configured). */
+export const cashSummaries = pgTable("cash_summaries", {
+  id: serial("id").primaryKey(),
+  asOf: date("as_of").notNull(),
+  body: text("body").notNull(),
+  data: jsonb("data").$type<Record<string, unknown>>().notNull(),
+  postedToSlack: boolean("posted_to_slack").notNull().default(false),
+  runId: integer("run_id").references(() => agentRuns.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export interface Allocation {
+  paymentId: number;
+  amount: number;
+}
+
+export interface MatchSuggestion {
+  paymentId: number;
+  score: number;
+  reasons: string[];
+}
+
 export interface ToolEvent {
   /** The model's tool_use id (runs from before Nov 2026 don't have it). */
   id?: string;
@@ -224,3 +295,5 @@ export type Approval = typeof approvals.$inferSelect;
 export type User = typeof users.$inferSelect;
 export type Session = typeof sessions.$inferSelect;
 export type AuditEntry = typeof auditLog.$inferSelect;
+export type IncomingPayment = typeof incomingPayments.$inferSelect;
+export type CashSummary = typeof cashSummaries.$inferSelect;

@@ -1,0 +1,62 @@
+{
+  "id": "evt_PavingDecFailed",
+  "object": "event",
+  "api_version": "2026-10-28.endive",
+  "created": 1794232800,
+  "livemode": false,
+  "pending_webhooks": 1,
+  "request": {
+    "id": null,
+    "idempotency_key": null
+  },
+  "type": "invoice.payment_failed",
+  "data": {
+    "object": {
+      "id": "in_DemoPavingDec",
+      "object": "invoice",
+      "account_country": "IE",
+      "currency": "eur",
+      "customer": "cus_DemoPaving",
+      "customer_name": "Demo Paving Co",
+      "customer_email": "pat@example.com",
+      "number": "1M-0050",
+      "status": "open",
+      "amount_due": 184500,
+      "amount_paid": 0,
+      "amount_remaining": 184500,
+      "total": 184500,
+      "subtotal": 150000,
+      "attempt_count": 1,
+      "attempted": true,
+      "collection_method": "send_invoice",
+      "created": 1793696400,
+      "period_start": 1796083200,
+      "period_end": 1796083200,
+      "livemode": false,
+      "lines": {
+        "object": "list",
+        "has_more": false,
+        "url": "/v1/invoices/in_DemoPavingDec/lines",
+        "data": [
+          {
+            "id": "il_DemoPavingDec",
+            "object": "line_item",
+            "amount": 184500,
+            "currency": "eur",
+            "description": "Monthly retainer",
+            "period": {
+              "start": 1796083200,
+              "end": 1798675200
+            }
+          }
+        ]
+      },
+      "status_transitions": {
+        "finalized_at": 1796086800,
+        "marked_uncollectible_at": null,
+        "paid_at": null,
+        "voided_at": null
+      }
+    }
+  }
+}

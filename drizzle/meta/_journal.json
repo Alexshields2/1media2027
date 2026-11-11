@@ -29,6 +29,13 @@
       "when": 1794409387035,
       "tag": "0003_notion_import",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1794409445148,
+      "tag": "0004_money_loop",
+      "breakpoints": true
     }
   ]
 }

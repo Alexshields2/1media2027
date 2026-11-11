@@ -1,0 +1,5 @@
+ Posted Account, Posted Transactions Date, Description1, Description2, Description3, Debit Amount, Credit Amount, Balance, Posted Currency, Transaction Type, Local Currency Amount, Local Currency
+"93-12-34 12345678","04/11/2026","VODAFONE IRELAND","DD","","45.00","","8,754.21","EUR","Debit","45.00","EUR"
+"93-12-34 12345678","05/11/2026","DEMO ATTIC CONV","SEPA CREDIT","1MEDIA NOV","","3,690.00","12,444.21","EUR","Credit","3,690.00","EUR"
+"93-12-34 12345678","07/11/2026","INTEREST","","","","0.12","12,444.33","EUR","Credit","0.12","EUR"
+"93-12-34 12345678","08/11/2026","ESB NETWORKS","DD","","120.40","","12,323.93","EUR","Debit","120.40","EUR"

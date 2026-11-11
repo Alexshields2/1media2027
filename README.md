@@ -8,7 +8,7 @@ The operating system for 1Media: clients, cash, delivery and the AI agents that 
 |---|---|
 | **Dashboard** | MRR, collected and outstanding this month, overdue payments, red/yellow clients, tasks due, approvals waiting, recent agent runs |
 | **Clients** | Every client with retainer, VAT, billing method, Meta ad accounts, GHL location, Stripe customer, CPL target and report rules |
-| **Payments** | One row per client per month, generated from the retainer. Record payments in one click; Stripe payments are recorded automatically |
+| **Payments** | One row per client per month, generated from the retainer. Stripe payments reconcile automatically; upload a Revolut Business or AIB CSV and confirm the suggested matches; anything unmatched waits for one-click assignment. Overdue by age (0–14, 15–30, 31–60, 60+ days), balance per client, and the weekly cash summary |
 | **Tasks** | Board (to do / in progress / review / done), filtered by client. Agents add tasks too |
 | **Client health** | Weekly traffic light per client, with a 6-week history |
 | **Reports** | Weekly WhatsApp reports and month-end reports written by the agents: edit, copy, mark sent |
@@ -20,7 +20,7 @@ The operating system for 1Media: clients, cash, delivery and the AI agents that 
 
 | Agent | When | Does |
 |---|---|---|
-| Finance | Weekdays 08:00 | Matches Stripe payments to retainers, flags overdue clients, drafts chasers, sends a Friday cash summary |
+| Finance | Weekdays 08:00 | Flags overdue clients by age, queues chasers in Approvals (never sends), saves a Friday cash summary and posts it to Slack |
 | Weekly reports | Mondays 07:00 | Every client's WhatsApp report from Meta Ads, leads and tasks |
 | Month-end reports | 1st, 09:00 | One executive report per client from the month's data |
 | Client health | Weekdays 08:30 | CPL against target, lead volume, creative fatigue, leads left untouched in GHL |
@@ -56,7 +56,7 @@ Agents use Claude (Anthropic API). They reach Gmail, Calendar, Drive, Meta Ads, 
 
 **Optional, any time later** (Settings → Environment Variables, then redeploy):
 - `COMPOSIO_API_KEY` connects Gmail, Calendar, Meta Ads, GoHighLevel and Stripe for the agents. After adding it, run `npm run connect` and open each login link.
-- `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` record Stripe payments automatically. In Stripe → Developers → Webhooks, add the endpoint `https://<your-app>.vercel.app/api/webhooks/stripe` with the event `invoice.paid`.
+- `STRIPE_WEBHOOK_SECRET` records Stripe payments automatically. In Stripe → Developers → Webhooks, add the endpoint `https://<your-app>.vercel.app/api/webhooks/stripe` with the events `invoice.paid`, `invoice.payment_succeeded`, `invoice.updated`, `invoice.payment_failed` and `charge.refunded`, and copy its signing secret (`whsec_…`). Put each client's Stripe customer ID (`cus_…`) on the client so payments match by customer.
 - `SLACK_WEBHOOK_URL` sends agent summaries and approval alerts to Slack.
 - `AGENTS_PAUSED=true` pauses every scheduled agent.
 
@@ -168,6 +168,18 @@ Set `PW_CHROMIUM_PATH` to use an already-installed Chromium, or `E2E_BASE_URL` t
 
 **Monitoring.** `GET /api/health` (no login) returns `{ ok, db, version }`, with status 503 if the database doesn't answer within 3 seconds; point an uptime monitor at it. Uncaught server errors are logged as one JSON line (`"source":"1media-os"`, searchable in Vercel → Logs) by `instrumentation.ts`, and, when `SLACK_WEBHOOK_URL` is set, posted to Slack (each distinct error at most once per 10 minutes, at most 5 alerts per 10 minutes per server instance).
 
+Database tests (Stripe and bank CSV fixtures reconciled end to end, the finance agent with the model mocked) need a Postgres you can create databases on; each test file uses its own throwaway database:
+
+```bash
+TEST_DATABASE_URL=postgres://postgres@localhost:5433/postgres npm test
+```
+
+## Money loop
+
+- **Stripe:** the webhook verifies the signature, records each event once (retries are no-ops), and tracks each invoice's cumulative amount paid, so part payments and overlapping events only ever add new money. It matches by the client's Stripe customer ID, then by amount and month when exactly one open row fits. Anything else lands in **Unmatched** on the Payments page. Failed payments and refunds only add a note; nothing ever issues a refund.
+- **Bank (Revolut Business, AIB):** upload the CSV export on the Payments page. Only money in is read; each credit gets suggested matches (amount, client or contact name in the payer/reference, month named in the reference, date window). Nothing is recorded until you confirm. Re-uploading an overlapping export is safe. Column names per bank live in `src/lib/bank-csv.ts` (`BANK_FORMATS`).
+- **Finance agent:** reads receivables by age, queues one chaser per client per stage (3, 7, 14 days) in Approvals, and on Fridays saves the cash summary (collected, outstanding, overdue by age, forecast for the month) and posts it to Slack.
+
 ## Code map
 
 ```
@@ -182,6 +194,11 @@ src/lib/guardrails.ts   what each agent may do on its own
 src/lib/os-tools.ts     tools that let agents read and write the OS database
 src/lib/approvals.ts    runs approved actions
 src/lib/billing.ts      VAT, monthly rows, payment state, totals
+src/lib/stripe-webhook.ts  Stripe events -> payments (idempotent)
+src/lib/bank-csv.ts     Revolut/AIB CSV parsing (column mapping is data)
+src/lib/matching.ts     match scoring and aging buckets (pure)
+src/lib/reconcile.ts    incoming payments -> payment rows, owner assignment
+src/lib/finance.ts      receivables, chasers, cash summary
 src/agents/             one folder per agent: settings and playbook
 drizzle/                database migrations
 scripts/                demo seed, Notion import, Composio connect
