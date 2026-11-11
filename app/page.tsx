@@ -2,12 +2,14 @@ import Link from "next/link";
 import { desc, eq, ne, and, lte } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { mrr, monthTotals, overdue } from "@/lib/billing";
+import { can } from "@/lib/roles";
 import { eur, monthLabel, monthStart, today, weekStart } from "@/lib/dates";
 import { runAgentAction } from "./actions";
 import { Badge } from "./_components/ui";
 import { Icon } from "./_components/icons";
 import { SubmitButton } from "./_components/client-bits";
-import { greeting, ownerName } from "./_components/owner";
+import { greeting } from "./_components/owner";
+import { requireUser } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -17,11 +19,10 @@ const SUGGESTIONS = ["Who owes us money right now?", "Which clients need attenti
 type InboxItem = { key: string; tone: "red" | "yellow" | "brand"; title: string; detail?: string; href: string; when?: string };
 
 export default async function Home() {
+  const user = await requireUser();
   const month = monthStart();
-  const [m, totals, late, pending, health, dueTasks, runs] = await Promise.all([
-    mrr(),
-    monthTotals(month),
-    overdue(),
+  const [money, pending, health, dueTasks, runs] = await Promise.all([
+    moneyFigures(can(user.role, "money_stats")),
     db.select().from(schema.approvals).where(eq(schema.approvals.status, "pending")).orderBy(desc(schema.approvals.createdAt)).limit(5),
     db
       .select({ h: schema.healthChecks, client: schema.clients.name })
@@ -38,8 +39,9 @@ export default async function Home() {
     db.select().from(schema.agentRuns).orderBy(desc(schema.agentRuns.startedAt)).limit(5),
   ]);
 
+  const late = money?.late ?? [];
   const lateTotal = late.reduce((s, r) => s + r.owed, 0);
-  const collectedPct = totals.due ? Math.round((totals.collected / totals.due) * 100) : 0;
+  const firstName = user.name.split(" ")[0] || user.name;
   const apiReady = !!process.env.ANTHROPIC_API_KEY;
 
   const inbox: InboxItem[] = [
@@ -61,7 +63,7 @@ export default async function Home() {
           <span className="dot" /> 1Media OS · Jarvis
         </div>
         <h1 className="mt-6 text-center text-4xl font-bold tracking-[-0.03em] md:text-5xl">
-          {greeting()}, <span className="brand-text">{ownerName()}</span>
+          {greeting()}, <span className="brand-text">{firstName}</span>
         </h1>
         <p className="mt-2 text-center text-sm text-ink/50">Ask about any client, payment, report or task. Jarvis reads the whole OS.</p>
 
@@ -76,7 +78,7 @@ export default async function Home() {
           </div>
         </form>
         <div className="mt-4 flex max-w-xl flex-wrap justify-center gap-2">
-          {SUGGESTIONS.map((s) => (
+          {SUGGESTIONS.filter((s) => money || !/money/i.test(s)).map((s) => (
             <form key={s} action={runAgentAction}>
               <input type="hidden" name="agent" value="jarvis" />
               <input type="hidden" name="instruction" value={s} />
@@ -89,7 +91,7 @@ export default async function Home() {
         <div className="mt-10 grid w-full max-w-xl grid-cols-2 gap-2 sm:grid-cols-4">
           {[
             { href: "/clients/new", label: "Add client" },
-            { href: "/payments", label: "Record payment" },
+            money ? { href: "/payments", label: "Record payment" } : { href: "/health", label: "Client health" },
             { href: "/tasks", label: "New task" },
             { href: "/reports", label: "Reports" },
           ].map((q) => (
@@ -157,14 +159,16 @@ export default async function Home() {
           )}
         </Rail>
 
-        <Rail title="Today's numbers" href="/dashboard">
-          <div className="grid grid-cols-2 gap-2">
-            <Num label="MRR ex VAT" value={eur(m.exVat)} hint={`${m.clients} clients`} />
-            <Num label="Collected" value={eur(totals.collected)} hint={`${collectedPct}% of month`} tone="good" />
-            <Num label="Outstanding" value={eur(totals.outstanding)} hint={monthLabel(month)} />
-            <Num label="Overdue" value={eur(lateTotal)} hint={`${late.length} payments`} tone={lateTotal > 0 ? "bad" : undefined} />
-          </div>
-        </Rail>
+        {money && (
+          <Rail title="Today's numbers" href="/dashboard">
+            <div className="grid grid-cols-2 gap-2">
+              <Num label="MRR ex VAT" value={eur(money.m.exVat)} hint={`${money.m.clients} clients`} />
+              <Num label="Collected" value={eur(money.totals.collected)} hint={`${money.totals.due ? Math.round((money.totals.collected / money.totals.due) * 100) : 0}% of month`} tone="good" />
+              <Num label="Outstanding" value={eur(money.totals.outstanding)} hint={monthLabel(month)} />
+              <Num label="Overdue" value={eur(lateTotal)} hint={`${late.length} payments`} tone={lateTotal > 0 ? "bad" : undefined} />
+            </div>
+          </Rail>
+        )}
       </aside>
     </div>
   );
@@ -195,4 +199,12 @@ function Num({ label, value, hint, tone }: { label: string; value: string; hint?
       {hint && <div className="text-[11px] text-ink/35">{hint}</div>}
     </div>
   );
+}
+
+
+/** Money figures, loaded only for people allowed to see them (never queried for team members). */
+async function moneyFigures(allowed: boolean) {
+  if (!allowed) return null;
+  const [m, totals, late] = await Promise.all([mrr(), monthTotals(monthStart()), overdue()]);
+  return { m, totals, late };
 }

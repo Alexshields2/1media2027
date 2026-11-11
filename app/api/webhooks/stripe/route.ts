@@ -4,6 +4,7 @@ import { and, asc, eq, sql as dsql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { recordPayment, round2 } from "@/lib/billing";
 import { notify } from "@/lib/slack";
+import { audit } from "@/lib/audit";
 import { eur } from "@/lib/dates";
 
 // Stripe -> Developers -> Webhooks: point an endpoint at /api/webhooks/stripe with the
@@ -60,6 +61,7 @@ export async function POST(req: NextRequest) {
       note: `Stripe invoice ${invoice.number ?? invoice.id} paid ${paidOn}`,
       stripeInvoiceId: invoice.id ?? undefined,
     });
+    await audit("payment.record", { target: `payment:${p.id}`, detail: { source: "stripe webhook", applied: apply, invoice: invoice.id } });
     left = round2(left - apply);
   }
 

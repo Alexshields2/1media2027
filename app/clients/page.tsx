@@ -2,14 +2,17 @@ import Link from "next/link";
 import { desc, eq, ilike, or } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { amountDue } from "@/lib/billing";
+import { can } from "@/lib/roles";
 import { eur, weekStart } from "@/lib/dates";
 import { Badge, Card, Empty, PageHeader, Table, btn } from "../_components/ui";
+import { requireUser } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
 const STATUS_TONE: Record<string, string> = { active: "green", onboarding: "blue", paused: "yellow", churned: "gray" };
 
 export default async function ClientsPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
+  const user = await requireUser();
   const q = (await searchParams).q?.trim();
   const like = q ? `%${q.replace(/[%_\\]/g, (c) => "\\" + c)}%` : undefined;
   const [clients, health] = await Promise.all([
@@ -21,6 +24,7 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
     db.select().from(schema.healthChecks).where(eq(schema.healthChecks.weekOf, weekStart())).orderBy(desc(schema.healthChecks.updatedAt)),
   ]);
   const healthBy = new Map(health.map((h) => [h.clientId, h]));
+  const money = can(user.role, "client_billing");
 
   return (
     <>
@@ -35,10 +39,10 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
       />
       <Card>
         {clients.length ? (
-          <Table head={["Client", "Status", "Retainer", "Billed / month", "CPL target", "This week", "Set up"]}>
+          <Table head={["Client", "Status", ...(money ? ["Retainer", "Billed / month"] : []), "CPL target", "This week", "Set up"]}>
             {clients.map((c) => {
               const h = healthBy.get(c.id);
-              const missing = [!c.metaAdAccountIds && "Meta", !c.ghlLocationId && "GHL", c.billingMethod === "stripe" && !c.stripeCustomerId && "Stripe"].filter(Boolean);
+              const missing = [!c.metaAdAccountIds && "Meta", !c.ghlLocationId && "GHL", money && c.billingMethod === "stripe" && !c.stripeCustomerId && "Stripe"].filter(Boolean);
               return (
                 <tr key={c.id} className="hover:bg-ink/[0.02]">
                   <td className="px-4 py-2.5">
@@ -50,8 +54,8 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
                   <td className="px-4 py-2.5">
                     <Badge tone={STATUS_TONE[c.status]}>{c.status}</Badge>
                   </td>
-                  <td className="num px-4 py-2.5">{eur(c.retainerExVat)}</td>
-                  <td className="num px-4 py-2.5">{eur(amountDue(c))}</td>
+                  {money && <td className="num px-4 py-2.5">{eur(c.retainerExVat)}</td>}
+                  {money && <td className="num px-4 py-2.5">{eur(amountDue(c))}</td>}
                   <td className="num px-4 py-2.5">{eur(c.cplTarget, c.reportCurrency)}</td>
                   <td className="px-4 py-2.5">{h ? <Badge tone={h.status}>{h.status}</Badge> : <span className="text-ink/30">–</span>}</td>
                   <td className="px-4 py-2.5 text-xs">{missing.length ? <span className="text-amber-400">Missing {missing.join(", ")}</span> : <span className="text-emerald-400">Complete</span>}</td>

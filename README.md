@@ -14,6 +14,7 @@ The operating system for 1Media: clients, cash, delivery and the AI agents that 
 | **Reports** | Weekly WhatsApp reports and month-end reports written by the agents: edit, copy, mark sent |
 | **Approvals** | Anything an agent wants to send, charge or change outside the OS waits here. Approve runs it; reject drops it |
 | **Agents** | Run any agent now (dry run by default) and read every run's summary and tool calls |
+| **Settings** | People and roles (owner / team), password resets, integration status, audit log |
 
 ## Agents
 
@@ -47,7 +48,11 @@ Agents use Claude (Anthropic API). They reach Gmail, Calendar, Drive, Meta Ads, 
    - `ANTHROPIC_API_KEY`: for the agents.
    Then click **Deploy**.
 3. **Add the database:** in the new project, go to **Storage → Create Database → Neon → Create → Connect**, then **Deployments → ⋯ → Redeploy**. The tables are created automatically during the build.
-4. Open the site and log in with `ADMIN_PASSWORD`.
+4. Open the site and sign in with `ADMIN_PASSWORD`. That first sign-in creates your owner account (email from `OWNER_EMAIL`, or a one-time setup page asks). From then on everyone signs in with their own email and password; add people in **Settings**.
+
+**Logins and roles:** owners see everything. Team members can't see Payments or money figures, can't edit client billing fields, can't approve finance or Stripe actions, and can't run the Finance agent. This is checked on the server, not just hidden. Sign-ins, approvals, payments and client edits are recorded in the audit log (Settings). Five wrong passwords for one email in 15 minutes locks that email for 15 minutes.
+
+**Preview deploys** never touch the production database: when `VERCEL_ENV=preview`, the app and the build's migrations only use `PREVIEW_DATABASE_URL` (and skip if it isn't set).
 
 **Optional, any time later** (Settings → Environment Variables, then redeploy):
 - `COMPOSIO_API_KEY` connects Gmail, Calendar, Meta Ads, GoHighLevel and Stripe for the agents. After adding it, run `npm run connect` and open each login link.
@@ -77,7 +82,7 @@ After importing, fill in each client's Meta ad account IDs, GHL location, CPL ta
 cp .env.example .env
 ```
 
-Edit `.env` and set at least `DATABASE_URL`, `ADMIN_PASSWORD` and `AUTH_SECRET`. Then:
+Edit `.env` and set at least `DATABASE_URL`, `AUTH_SECRET`, `ADMIN_PASSWORD` and `OWNER_EMAIL` (for the first sign-in). Then:
 
 ```bash
 npm install
@@ -111,8 +116,11 @@ npm run agent -- finance --dry-run
 
 ```
 app/                    pages, server actions, API routes (cron, Stripe webhook)
-proxy.ts                login gate
+proxy.ts                login gate (cookie signature; pages and actions re-check the session)
 src/db/                 schema (Drizzle) and connection
+src/lib/session.ts      sessions and the server-side guards (requireUser, requirePermission)
+src/lib/roles.ts        what owners and team members may do
+src/lib/auth.ts         sign-in flows (password now; magic link plugs into createSession later)
 src/lib/runner.ts       the agent loop: Claude + OS tools + Composio tools, with guardrails
 src/lib/guardrails.ts   what each agent may do on its own
 src/lib/os-tools.ts     tools that let agents read and write the OS database

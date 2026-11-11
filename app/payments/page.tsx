@@ -4,14 +4,18 @@ import { db, schema } from "@/db";
 import { paymentState, round2 } from "@/lib/billing";
 import { addMonths, eur, monthLabel, monthStart, today } from "@/lib/dates";
 import { addPaymentAction, generateMonthAction, recordPaymentAction } from "../actions";
-import { Badge, Card, Empty, PageHeader, Stat, Table, btn, btnGhost, field, input } from "../_components/ui";
+import { can } from "@/lib/roles";
+import { Badge, Card, Empty, NoAccess, PageHeader, Stat, Table, btn, btnGhost, field, input } from "../_components/ui";
 import { SubmitButton } from "../_components/client-bits";
+import { requireUser } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
 const STATE_TONE: Record<string, string> = { paid: "green", part: "yellow", overdue: "red", due: "yellow", upcoming: "gray" };
 
 export default async function PaymentsPage({ searchParams }: { searchParams: Promise<{ month?: string }> }) {
+  const user = await requireUser();
+  if (!can(user.role, "payments")) return <NoAccess what="Payments" />;
   const sp = await searchParams;
   const period = monthStart(/^\d{4}-\d{2}$/.test(sp.month ?? "") ? `${sp.month}-01` : today());
   const month = period.slice(0, 7);

@@ -1,11 +1,11 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db, schema } from "../db";
 import { isOsTool, runOsTool } from "./os-tools";
 import { executeComposioTool } from "./composio";
 import { decide } from "./guardrails";
 
-/** Runs an approved action. Hard-blocked actions stay blocked even if approved. */
-export async function executeApproval(approvalId: number): Promise<{ ok: boolean; result: string }> {
+/** Runs an approved action. Hard-blocked actions stay blocked even if approved. `userId` = who approved. */
+export async function executeApproval(approvalId: number, userId: number | null = null): Promise<{ ok: boolean; result: string }> {
   const [a] = await db.select().from(schema.approvals).where(eq(schema.approvals.id, approvalId));
   if (!a) throw new Error(`Approval ${approvalId} not found`);
   if (a.status !== "pending" && a.status !== "approved") {
@@ -14,11 +14,12 @@ export async function executeApproval(approvalId: number): Promise<{ ok: boolean
 
   const d = decide(a.tool, "L3");
   if (d.action === "block") {
+    await db.update(schema.approvals).set({ decidedBy: userId }).where(eq(schema.approvals.id, a.id));
     await finish(a.id, "failed", `Blocked: ${d.reason}`);
     return { ok: false, result: d.reason };
   }
 
-  await db.update(schema.approvals).set({ status: "approved", decidedAt: new Date() }).where(eq(schema.approvals.id, a.id));
+  await db.update(schema.approvals).set({ status: "approved", decidedAt: new Date(), decidedBy: userId }).where(eq(schema.approvals.id, a.id));
   try {
     const result = isOsTool(a.tool) ? await runOsTool(a.tool, a.input) : await executeComposioTool(a.tool, a.input);
     await finish(a.id, "executed", result.slice(0, 4000));
@@ -30,8 +31,11 @@ export async function executeApproval(approvalId: number): Promise<{ ok: boolean
   }
 }
 
-export async function rejectApproval(approvalId: number) {
-  await db.update(schema.approvals).set({ status: "rejected", decidedAt: new Date() }).where(eq(schema.approvals.id, approvalId));
+export async function rejectApproval(approvalId: number, userId: number | null = null) {
+  await db
+    .update(schema.approvals)
+    .set({ status: "rejected", decidedAt: new Date(), decidedBy: userId })
+    .where(and(eq(schema.approvals.id, approvalId), eq(schema.approvals.status, "pending")));
 }
 
 async function finish(id: number, status: "executed" | "failed", result: string) {
