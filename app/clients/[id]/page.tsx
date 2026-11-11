@@ -2,13 +2,14 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { and, desc, eq, like } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { paymentState } from "@/lib/billing";
+import { amountDue, paymentState } from "@/lib/billing";
 import { can } from "@/lib/roles";
 import { eur, monthLabel } from "@/lib/dates";
 import { setupProgress } from "@/lib/setup";
 import { updateClient } from "../../actions";
-import { Badge, Card, Empty, PageHeader } from "../../_components/ui";
+import { Badge, Card, Empty } from "../../_components/ui";
 import { ClientForm } from "../client-form";
+import { ClientLogo } from "../../_components/client-logo";
 import { requireUser } from "@/lib/session";
 import { SignalList } from "../../health/signals";
 import { CallPrepCard, InboxNotesCard } from "./call-prep";
@@ -41,18 +42,74 @@ export default async function ClientPage({ params, searchParams }: { params: Pro
   const callPrep = briefs.find((b) => b.kind === "call_prep");
   const inboxNotes = briefs.filter((b) => b.kind === "inbox").slice(0, 3);
 
-  const setup = setupProgress(client, { billing: can(user.role, "client_billing") });
+  const money = can(user.role, "client_billing");
+  const setup = setupProgress(client, { billing: money });
+  const latest = health[0];
+  const openTasks = tasks.filter((t) => t.status !== "done").length;
+  const sentReports = reports.filter((r) => r.status === "sent").length;
+  const site = client.website?.trim();
+  const siteHref = site ? (/^https?:\/\//.test(site) ? site : `https://${site}`) : null;
+  const STATUS_TONE: Record<string, string> = { active: "green", onboarding: "blue", paused: "yellow", churned: "gray" };
+  const glow = latest?.status === "red" ? "bg-red-400 shadow-[0_0_10px_#f87171]" : latest?.status === "yellow" ? "bg-amber-400 shadow-[0_0_10px_#fbbf24]" : latest ? "bg-emerald-400 shadow-[0_0_10px_#34d399]" : "bg-ink/20";
+  const stats: { label: string; value: React.ReactNode; hint?: string }[] = [
+    ...(money ? [{ label: "Retainer", value: eur(client.retainerExVat), hint: `${eur(amountDue(client))} billed / month` }] : []),
+    { label: "Health", value: <span className="flex items-center gap-2"><span className={`size-2.5 rounded-full ${glow}`} />{latest ? latest.status[0].toUpperCase() + latest.status.slice(1) : "Not checked"}</span>, hint: latest ? `Week of ${latest.weekOf}` : "Runs weekdays once set up" },
+    { label: "CPL target", value: eur(client.cplTarget, client.reportCurrency), hint: "Cost per lead" },
+    { label: "Open tasks", value: String(openTasks), hint: `${tasks.length - openTasks} done` },
+    { label: "Set-up", value: `${Math.round((setup.done / setup.total) * 100)}%`, hint: setup.complete ? "Ready for agents" : `${setup.total - setup.done} item(s) missing` },
+  ];
 
   return (
     <>
-      <PageHeader title={client.name} subtitle={<Link href="/clients" className="hover:underline">← All clients</Link>} />
+      <Link href="/clients" className="mb-4 inline-block text-sm text-ink/50 hover:text-ink">← All clients</Link>
+      <section className="relative mb-6 overflow-hidden rounded-3xl border border-line bg-panel">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(60%_120%_at_0%_0%,rgb(4_153_242/0.18),transparent_60%),radial-gradient(40%_80%_at_100%_100%,rgb(56_196_250/0.08),transparent_70%)]" />
+        <div className="relative flex flex-col gap-5 p-6 md:flex-row md:items-center md:p-8">
+          <ClientLogo name={client.name} size={96} className="rounded-2xl shadow-[0_0_40px_rgb(4_153_242/0.18)]" />
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-3xl font-bold tracking-[-0.02em]">{client.name}</h1>
+              <Badge tone={STATUS_TONE[client.status]}>{client.status}</Badge>
+            </div>
+            <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-ink/55">
+              {client.industry && <span>{client.industry}</span>}
+              {client.contactName && <span>Contact: {client.contactName}</span>}
+              {siteHref && (
+                <a href={siteHref} target="_blank" rel="noreferrer" className="text-brand-light hover:underline">
+                  {site!.replace(/^https?:\/\//, "").replace(/\/$/, "")} ↗
+                </a>
+              )}
+              {client.startDate && <span>Client since {monthLabel(client.startDate)}</span>}
+            </p>
+          </div>
+          <a href="#details" className="self-start rounded-full border border-line bg-canvas/60 px-4 py-2 text-sm hover:border-brand/50 md:self-center">
+            Edit details
+          </a>
+        </div>
+        <div className="relative grid grid-cols-2 gap-px border-t border-line bg-line sm:grid-cols-3 lg:grid-cols-5">
+          {stats.map((st) => (
+            <div key={st.label} className="bg-panel px-6 py-4">
+              <div className="text-[11px] font-medium tracking-wide text-ink/45 uppercase">{st.label}</div>
+              <div className="num mt-1 text-lg font-semibold">{st.value}</div>
+              {st.hint && <div className="text-[11px] text-ink/35">{st.hint}</div>}
+            </div>
+          ))}
+        </div>
+      </section>
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
           <CallPrepCard clientId={id} brief={callPrep} lastRun={prepRun} started={prepStarted} />
           <InboxNotesCard notes={inboxNotes} />
-          <Card title="Details">
-            <ClientForm client={client} action={updateClient.bind(null, id)} submitLabel="Save changes" showBilling={can(user.role, "client_billing")} />
-          </Card>
+          <details id="details" open={!setup.complete} className="group rounded-2xl border border-line bg-panel">
+            <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3 text-sm font-semibold">
+              Client details & settings
+              <span className="text-xs font-normal text-ink/45 group-open:hidden">Show</span>
+              <span className="hidden text-xs font-normal text-ink/45 group-open:inline">Hide</span>
+            </summary>
+            <div className="border-t border-line p-4">
+              <ClientForm client={client} action={updateClient.bind(null, id)} submitLabel="Save changes" showBilling={money} />
+            </div>
+          </details>
         </div>
         <div className="space-y-6">
           <Card title="Set-up checklist" actions={<Badge tone={setup.complete ? "green" : "yellow"}>{setup.complete ? "Complete" : `${setup.done} of ${setup.total}`}</Badge>}>
