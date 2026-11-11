@@ -18,6 +18,11 @@ export function mockModeEnabled(): boolean {
   return process.env.AGENTS_MOCK === "true" && process.env.VERCEL_ENV !== "production";
 }
 
+/** True when agents can actually call a model: an Anthropic key is set, or AGENTS_MOCK is on (never in production). */
+export function modelReady(): boolean {
+  return !!process.env.ANTHROPIC_API_KEY || mockModeEnabled();
+}
+
 async function mockDepsIfEnabled(): Promise<RunDeps | undefined> {
   if (!mockModeEnabled()) return undefined;
   const { mockDeps } = await import("./mock-agents");

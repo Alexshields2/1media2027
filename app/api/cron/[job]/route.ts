@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { AGENTS } from "@/agents/registry";
-import { runAgent } from "@/lib/runner";
+import { modelReady, runAgent } from "@/lib/runner";
 import { generateMonth } from "@/lib/billing";
 import { monthStart } from "@/lib/dates";
 import { notify } from "@/lib/slack";
@@ -41,6 +41,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ job:
     if (created) await notify(`Billing: created ${created} retainer row(s) for this month.`);
     return NextResponse.json({ job, created });
   }
+
+  // Without a model every agent run would just fail and fill the inbox with red "run failed" items.
+  if (!modelReady()) return NextResponse.json({ job, skipped: "ANTHROPIC_API_KEY is not set" });
 
   const kind = REPORT_JOBS[job];
   if (kind) {

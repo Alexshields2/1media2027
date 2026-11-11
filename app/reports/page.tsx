@@ -9,6 +9,7 @@ import { retryFailedReportsAction, retryReportJobAction, runReportsAction, saveR
 import { Badge, Card, Empty, PageHeader, btn, btnBrand, btnGhost } from "../_components/ui";
 import { SubmitButton, WhatsAppCopyButton } from "../_components/client-bits";
 import { requireUser } from "@/lib/session";
+import { modelReady } from "@/lib/runner";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300; // a fallback run started from here continues in the background
@@ -97,6 +98,9 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
           </div>
         }
       />
+      {!modelReady() && (
+        <div className="mb-4 rounded-lg bg-amber-500/10 px-4 py-3 text-sm text-amber-200">Reports can't be written yet: add ANTHROPIC_API_KEY in Vercel (Settings → Environment Variables), then redeploy. The buttons below do nothing until then.</div>
+      )}
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">

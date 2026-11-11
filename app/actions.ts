@@ -16,7 +16,7 @@ import { passwordProblem } from "@/lib/password";
 import { looksLikeEmail, normalizeEmail } from "@/lib/auth-rules";
 import { generateMonth, recordPayment } from "@/lib/billing";
 import { executeApproval, rejectApproval } from "@/lib/approvals";
-import { createRun, executeRun, runAgent } from "@/lib/runner";
+import { createRun, executeRun, runAgent, modelReady } from "@/lib/runner";
 import { AGENTS } from "@/agents/registry";
 import { today, weekStart } from "@/lib/dates";
 import { assignIncoming, ignoreIncoming, importBankCsv, restoreIncoming } from "@/lib/reconcile";
@@ -348,6 +348,7 @@ async function startJobs(ids: number[]) {
 
 export async function runReportsAction(kind: "weekly" | "monthly", period: string) {
   await requireSignedIn();
+  if (!modelReady()) return; // the Reports page already says the key is missing
   const { queued } = await enqueueReportJobs(kind, periodFor(kind, period));
   await startJobs(queued.map((j) => j.id));
   revalidatePath("/reports");
@@ -355,6 +356,7 @@ export async function runReportsAction(kind: "weekly" | "monthly", period: strin
 
 export async function retryReportJobAction(jobId: number) {
   await requireSignedIn();
+  if (!modelReady()) return; // the Reports page already says the key is missing
   const job = await resetJob(jobId);
   if (job) await startJobs([job.id]);
   revalidatePath("/reports");
@@ -362,6 +364,7 @@ export async function retryReportJobAction(jobId: number) {
 
 export async function retryFailedReportsAction(kind: "weekly" | "monthly", period: string) {
   await requireSignedIn();
+  if (!modelReady()) return; // the Reports page already says the key is missing
   const jobs = await db
     .select({ id: schema.reportJobs.id })
     .from(schema.reportJobs)
@@ -416,6 +419,7 @@ export async function runAgentAction(form: FormData) {
   const agent = AGENTS[str(form, "agent") ?? ""];
   if (!agent) throw new Error("Unknown agent");
   if (!canRunAgent(user.role, agent.name)) throw new ForbiddenError(`run the ${agent.title} agent`);
+  if (!modelReady()) redirect("/agents?notice=nokey");
   const instruction = str(form, "instruction") ?? undefined;
   if (agent.needsInstruction && !instruction) throw new Error("This agent needs an instruction.");
   const dryRun = form.get("dryRun") === "on";

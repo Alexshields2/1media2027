@@ -20,7 +20,7 @@ const LEVEL: Record<string, string> = {
   L3: "Full autonomy",
 };
 
-export default async function AgentsPage({ searchParams }: { searchParams: Promise<{ started?: string }> }) {
+export default async function AgentsPage({ searchParams }: { searchParams: Promise<{ started?: string; notice?: string }> }) {
   const user = await requireUser();
   const sp = await searchParams;
   const runs = await db.select().from(schema.agentRuns).orderBy(desc(schema.agentRuns.startedAt)).limit(25);
@@ -31,6 +31,9 @@ export default async function AgentsPage({ searchParams }: { searchParams: Promi
     <>
       <PageHeader title="Agents" subtitle="Each agent runs on its schedule, or now from here. Start with a dry run: it reads everything and changes nothing." />
 
+      {sp.notice === "nokey" && (
+        <div className="mb-4 rounded-lg bg-amber-500/10 px-4 py-3 text-sm text-amber-200">Nothing was run: add ANTHROPIC_API_KEY in Vercel (Settings → Environment Variables), then redeploy.</div>
+      )}
       {sp.started && <div className="mb-4 rounded-lg bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">Started {sp.started}. It will appear under Recent runs; refresh in a minute.</div>}
       {(!apiReady || !appsReady) && (
         <div className="mb-4 rounded-lg bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
