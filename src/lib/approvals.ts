@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db, schema } from "../db";
 import { isOsTool, runOsTool } from "./os-tools";
 import { executeComposioTool } from "./composio";
@@ -32,6 +32,26 @@ export async function executeApproval(approvalId: number): Promise<{ ok: boolean
 
 export async function rejectApproval(approvalId: number) {
   await db.update(schema.approvals).set({ status: "rejected", decidedAt: new Date() }).where(eq(schema.approvals.id, approvalId));
+}
+
+/** Moves a pending approval to "approved" in one statement, so two clicks can't both run it. */
+export async function claimApproval(approvalId: number) {
+  const [a] = await db
+    .update(schema.approvals)
+    .set({ status: "approved", decidedAt: new Date() })
+    .where(and(eq(schema.approvals.id, approvalId), eq(schema.approvals.status, "pending")))
+    .returning();
+  return a ?? null;
+}
+
+/** Rejects an approval only if it is still pending. */
+export async function rejectIfPending(approvalId: number) {
+  const [a] = await db
+    .update(schema.approvals)
+    .set({ status: "rejected", decidedAt: new Date() })
+    .where(and(eq(schema.approvals.id, approvalId), eq(schema.approvals.status, "pending")))
+    .returning();
+  return a ?? null;
 }
 
 async function finish(id: number, status: "executed" | "failed", result: string) {

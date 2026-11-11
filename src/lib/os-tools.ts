@@ -4,6 +4,7 @@ import { and, desc, eq, gte, inArray, ne, sql as dsql } from "drizzle-orm";
 import { db, schema } from "../db";
 import { recordPayment, paymentState, round2 } from "./billing";
 import { today, weekStart } from "./dates";
+import { scoreAndSaveHealth } from "./health";
 
 // Tools that let agents read and write the 1Media OS database.
 // Names start with OS_ so the guardrails treat them as internal.
@@ -214,6 +215,177 @@ const tools: Record<string, OsTool> = {
       };
       await db.insert(schema.healthChecks).values(values).onConflictDoUpdate({ target: [schema.healthChecks.clientId, schema.healthChecks.weekOf], set: values });
       return { ok: true };
+    },
+  },
+
+  OS_SCORE_HEALTH: {
+    def: {
+      name: "OS_SCORE_HEALTH",
+      description:
+        "Score a client's health from the numbers you gathered and save this week's traffic light. The status, issue, reason and action are computed by fixed rules " +
+        "(CPL vs target, lead volume vs the previous 4 weeks, creative fatigue from frequency and CTR, GHL leads untouched for over 24h). " +
+        "Pass meta=null or ghl=null when that data isn't available; never guess numbers. history is optional: when omitted, saved weeks are used. Returns the score with one line per signal.",
+      input_schema: {
+        type: "object",
+        properties: {
+          client_id: { type: "integer" },
+          meta: {
+            type: ["object", "null"],
+            description: "Meta Ads totals for the last 7 days across the client's ad accounts.",
+            properties: {
+              spend: { type: "number" },
+              leads: { type: "integer" },
+              impressions: { type: "integer" },
+              clicks: { type: "integer", description: "Link clicks." },
+              frequency: { type: "number", description: "Average frequency over the 7 days." },
+              ctr: { type: "number", description: "Link CTR in percent (1.2 = 1.2%). Optional if clicks and impressions are given." },
+            },
+            required: ["spend", "leads"],
+          },
+          history: {
+            type: "array",
+            description: "The previous 4 weeks from Meta Ads, newest first.",
+            items: {
+              type: "object",
+              properties: { week_of: { type: "string" }, leads: { type: "integer" }, ctr: { type: "number" } },
+              required: ["leads"],
+            },
+          },
+          ghl: {
+            type: ["object", "null"],
+            description: "HighLevel: leads created in the last 7 days, and how many of those are over 24h old with no call, message or stage move.",
+            properties: {
+              new_leads: { type: "integer" },
+              untouched_over_24h: { type: "integer" },
+              untouched_names: { type: "array", items: { type: "string" } },
+            },
+            required: ["new_leads", "untouched_over_24h"],
+          },
+        },
+        required: ["client_id", "meta", "ghl"],
+      },
+    },
+    input: z.object({
+      client_id: id,
+      meta: z
+        .object({
+          spend: z.number().nonnegative(),
+          leads: z.number().int().nonnegative(),
+          impressions: z.number().int().nonnegative().nullish(),
+          clicks: z.number().int().nonnegative().nullish(),
+          frequency: z.number().nonnegative().nullish(),
+          ctr: z.number().nonnegative().nullish(),
+        })
+        .nullable(),
+      history: z.array(z.object({ week_of: z.string().optional(), leads: z.number().int().nonnegative().nullable(), ctr: z.number().nonnegative().nullish() })).optional(),
+      ghl: z
+        .object({
+          new_leads: z.number().int().nonnegative(),
+          untouched_over_24h: z.number().int().nonnegative(),
+          untouched_names: z.array(z.string()).optional(),
+        })
+        .nullable(),
+    }),
+    run: async (i) =>
+      scoreAndSaveHealth(i.client_id, {
+        meta: i.meta,
+        history: i.history?.map((h: { week_of?: string; leads: number | null; ctr?: number | null }) => ({ weekOf: h.week_of, leads: h.leads, ctr: h.ctr })),
+        ghl: i.ghl && { newLeads: i.ghl.new_leads, untouchedOver24h: i.ghl.untouched_over_24h, untouchedNames: i.ghl.untouched_names },
+      }),
+  },
+
+  OS_SAVE_BRIEF: {
+    def: {
+      name: "OS_SAVE_BRIEF",
+      description:
+        "Save a brief on the client's page in 1Media OS. kind=call_prep: the one-page brief before a client call; leads must list EVERY recent lead by name. " +
+        "kind=inbox: a short note of what came in from the client and what was drafted or turned into tasks.",
+      input_schema: {
+        type: "object",
+        properties: {
+          client_id: { type: "integer" },
+          kind: { type: "string", enum: ["call_prep", "inbox"] },
+          title: { type: "string", description: "e.g. 'Call prep: Demo Paving Co, Wed 12 Nov 10:00'" },
+          body: { type: "string", description: "The brief in plain text or simple markdown (numbers, open tasks, traffic light, questions to ask)." },
+          call_at: { type: "string", description: "ISO date-time of the call, if known." },
+          leads: {
+            type: "array",
+            description: "Every lead since the last call, by name. Untouched leads first.",
+            items: {
+              type: "object",
+              properties: {
+                name: { type: "string" },
+                stage: { type: "string" },
+                created_at: { type: "string" },
+                last_contact_at: { type: "string" },
+                days_since_contact: { type: "number" },
+                untouched: { type: "boolean" },
+                source: { type: "string" },
+                note: { type: "string" },
+              },
+              required: ["name"],
+            },
+          },
+        },
+        required: ["client_id", "kind", "title", "body"],
+      },
+    },
+    input: z.object({
+      client_id: id,
+      kind: z.enum(["call_prep", "inbox"]),
+      title: z.string().min(3),
+      body: z.string().min(10),
+      call_at: z.string().optional(),
+      leads: z
+        .array(
+          z.object({
+            name: z.string().min(1),
+            stage: z.string().optional(),
+            created_at: z.string().optional(),
+            last_contact_at: z.string().optional(),
+            days_since_contact: z.number().optional(),
+            untouched: z.boolean().optional(),
+            source: z.string().optional(),
+            note: z.string().optional(),
+          }),
+        )
+        .optional(),
+    }),
+    run: async (i) => {
+      const callAt = i.call_at && !Number.isNaN(Date.parse(i.call_at)) ? new Date(i.call_at) : null;
+      const leads = (i.leads ?? []).map((l: Record<string, unknown>) => ({
+        name: l.name as string,
+        stage: l.stage as string | undefined,
+        createdAt: l.created_at as string | undefined,
+        lastContactAt: l.last_contact_at as string | undefined,
+        daysSinceContact: l.days_since_contact as number | undefined,
+        untouched: l.untouched as boolean | undefined,
+        source: l.source as string | undefined,
+        note: l.note as string | undefined,
+      }));
+      const [b] = await db
+        .insert(schema.briefs)
+        .values({ clientId: i.client_id, kind: i.kind, title: i.title, body: i.body, leads, callAt })
+        .returning({ id: schema.briefs.id });
+      return { ok: true, brief_id: b.id, leads_listed: leads.length };
+    },
+  },
+
+  OS_LIST_BRIEFS: {
+    def: {
+      name: "OS_LIST_BRIEFS",
+      description: "Recent briefs for a client (call prep and inbox notes), newest first. Use the last call-prep brief to know what was said at the last call.",
+      input_schema: {
+        type: "object",
+        properties: { client_id: { type: "integer" }, kind: { type: "string", enum: ["call_prep", "inbox"] }, limit: { type: "integer" } },
+        required: ["client_id"],
+      },
+    },
+    input: z.object({ client_id: id, kind: z.enum(["call_prep", "inbox"]).optional(), limit: z.number().int().min(1).max(20).optional() }),
+    run: async ({ client_id, kind, limit = 5 }) => {
+      const conds = [eq(schema.briefs.clientId, client_id)];
+      if (kind) conds.push(eq(schema.briefs.kind, kind));
+      return db.select().from(schema.briefs).where(and(...conds)).orderBy(desc(schema.briefs.createdAt)).limit(limit);
     },
   },
 

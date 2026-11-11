@@ -14,7 +14,8 @@
     "seed:demo": "tsx scripts/seed-demo.ts",
     "import:notion": "tsx scripts/import-notion.ts",
     "connect": "tsx scripts/connect.ts",
-    "agent": "tsx src/cli.ts"
+    "agent": "tsx src/cli.ts",
+    "slack:fake": "tsx scripts/slack-fake.ts"
   },
   "repository": {
     "type": "git",

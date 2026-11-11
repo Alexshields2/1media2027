@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { SESSION_COOKIE, isValidSession, sessionToken } from "./src/lib/auth";
 
 // Every page needs the login cookie, except the login page itself and the
-// machine endpoints (cron and webhooks), which check their own secrets.
+// machine endpoints (cron, webhooks and Slack), which check their own secrets.
 export async function proxy(req: NextRequest) {
   if (!(await sessionToken())) {
     return new NextResponse("1Media OS needs ADMIN_PASSWORD and a database. Add them in Vercel -> Settings -> Environment Variables / Storage, then redeploy.", { status: 503 });
@@ -15,5 +15,5 @@ export async function proxy(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!login|api/cron|api/webhooks|_next|favicon.ico|icon|1media-logo.png).*)"],
+  matcher: ["/((?!login|api/cron|api/webhooks|api/slack|_next|favicon.ico|icon|1media-logo.png).*)"],
 };

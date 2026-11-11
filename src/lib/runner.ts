@@ -1,6 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { AnthropicToolUseBlock } from "@composio/anthropic";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { MODEL, config, requireEnv } from "../config";
 import { db, schema } from "../db";
 import type { ToolEvent, AgentRun } from "../db/schema";
@@ -8,7 +8,8 @@ import { composio, loadComposioTools, composioEnabled } from "./composio";
 import { decide, type Autonomy } from "./guardrails";
 import { osToolDefs, isOsTool, runOsTool, ALL_OS_TOOLS } from "./os-tools";
 import { today } from "./dates";
-import { notify } from "./slack";
+import { notify, notifyApprovals } from "./slack";
+import { describeAction } from "./approvals";
 import { houseRules } from "../agents/house-rules";
 import type { AgentDefinition, AgentContext } from "../agents/types";
 
@@ -45,7 +46,7 @@ export async function runAgent(agent: AgentDefinition, opts: RunOptions = {}): P
   try {
     requireEnv("ANTHROPIC_API_KEY");
     const client = new Anthropic();
-    const composioTools = await loadComposioTools({ toolkits: agent.toolkits, tools: agent.tools });
+    const composioTools = (await loadComposioTools({ toolkits: agent.toolkits, tools: agent.tools })).filter((t) => !isExcluded(agent, t.name));
     const tools = [...osToolDefs(agent.osTools ?? ALL_OS_TOOLS), ...composioTools] as Anthropic.Beta.BetaToolUnion[];
     const system = systemPrompt(agent, autonomy);
     const note = composioEnabled() ? "" : "\n\n(Note: external apps such as Gmail, Meta Ads, HighLevel and Stripe are not connected yet. Work with the 1Media OS database only, and say what you could not check.)";
@@ -123,12 +124,23 @@ export async function runAgent(agent: AgentDefinition, opts: RunOptions = {}): P
     .returning();
 
   const proposed = count("proposed");
-  if (proposed || status === "error") {
-    await notify(
-      `*${agent.name}* ${status === "error" ? "failed" : "finished"}${proposed ? ` – ${proposed} action(s) waiting for approval` : ""}.\n${(summary ?? "").slice(0, 1500)}`,
-    );
+  const head = `*${agent.name}* ${status === "error" ? "failed" : "finished"}`;
+  if (proposed) {
+    const waiting = await db.select().from(schema.approvals).where(and(eq(schema.approvals.runId, run.id), eq(schema.approvals.status, "pending")));
+    await notifyApprovals({
+      title: `${head} – ${proposed} action(s) waiting for approval.`,
+      summary: (summary ?? "").slice(0, 1500),
+      approvals: waiting.map((a) => ({ id: a.id, agent: a.agent, tool: a.tool, input: a.input, label: describeAction(a.tool, a.input) })),
+    });
+  } else if (status === "error") {
+    await notify(`${head}.\n${(summary ?? "").slice(0, 1500)}`);
   }
   return saved;
+}
+
+/** True when the agent definition forbids this tool (it is neither offered nor run). */
+export function isExcluded(agent: Pick<AgentDefinition, "excludeTools">, name: string): boolean {
+  return (agent.excludeTools ?? []).some((re) => re.test(name.toUpperCase()));
 }
 
 async function handleCall(
@@ -139,7 +151,9 @@ async function handleCall(
   events: ToolEvent[],
 ): Promise<Anthropic.Beta.BetaToolResultBlockParam> {
   const input = (call.input ?? {}) as Record<string, unknown>;
-  const d = decide(call.name, autonomy, agent.allow);
+  const d = isExcluded(agent, call.name)
+    ? ({ action: "block", reason: `${agent.name} may not use ${call.name}.` } as const)
+    : decide(call.name, autonomy, agent.allow);
   const event: ToolEvent = { tool: call.name, input, outcome: "ran" };
   events.push(event);
 

@@ -1,0 +1,29 @@
+# Slack app for Jarvis in 1Media OS.
+# api.slack.com/apps -> Create New App -> From a manifest -> pick the 1Media workspace -> paste this.
+# Replace YOUR-APP with the production domain (e.g. 1media2027.vercel.app) in the three URLs.
+display_information:
+  name: Jarvis
+  description: 1Media OS in Slack: ask questions and approve agent actions.
+  background_color: "#020617"
+features:
+  bot_user:
+    display_name: Jarvis
+    always_online: true
+  slash_commands:
+    - command: /jarvis
+      url: https://YOUR-APP/api/slack
+      description: Ask Jarvis about clients, cash, tasks and performance (read-only)
+      usage_hint: who owes us money?
+      should_escape: false
+oauth_config:
+  scopes:
+    bot:
+      - commands
+      - incoming-webhook
+settings:
+  interactivity:
+    is_enabled: true
+    request_url: https://YOUR-APP/api/slack
+  org_deploy_enabled: false
+  socket_mode_enabled: false
+  token_rotation_enabled: false
