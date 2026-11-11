@@ -12,6 +12,7 @@ export type AuditAction =
   | "payment.generate_month"
   | "client.create"
   | "client.update"
+  | "agent.ask"
   | "user.create"
   | "user.update"
   | "user.reset_password"
