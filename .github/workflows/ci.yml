@@ -48,7 +48,7 @@ jobs:
           POSTGRES_PASSWORD: postgres
         ports: ["5432:5432"]
         options: >-
-          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
     env:
       DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
       ADMIN_PASSWORD: ci-smoke-password
@@ -65,8 +65,14 @@ jobs:
           key: nextjs-e2e-${{ hashFiles('package-lock.json') }}-${{ github.sha }}
           restore-keys: nextjs-e2e-${{ hashFiles('package-lock.json') }}-
       - run: npm ci
+      # The runner image already has Chrome's system libraries, so skip --with-deps
+      # (its apt-get update is slow and flaky) and fetch only the headless shell.
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ hashFiles('package-lock.json') }}
       - name: Install Chromium
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install --only-shell chromium
       # The build runs scripts/migrate.mjs first, so this also migrates the service database.
       - run: npm run build
       - run: npm run seed:demo
