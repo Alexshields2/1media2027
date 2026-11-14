@@ -1,7 +1,7 @@
 import "../src/config";
 import { eq } from "drizzle-orm";
 import { db, schema, closeDb } from "../src/db";
-import { generateMonth } from "../src/lib/billing";
+import { amountDue, generateMonth } from "../src/lib/billing";
 import { addMonths, eur, monthStart, weekStart, today } from "../src/lib/dates";
 import { metaInsights, metaLeadCount } from "../src/lib/fixtures/ads-fixtures";
 import { reportWeek, shiftWeek, weekPeriod, deriveMetrics } from "../src/lib/report-metrics";
@@ -35,6 +35,15 @@ async function main() {
     .returning();
 
   const now = monthStart();
+  // Earlier this year: one paid retainer per month for each client that had started by then.
+  const ytd = [];
+  for (let m = `${now.slice(0, 4)}-01-01`; m < addMonths(now, -2); m = addMonths(m, 1)) {
+    for (const c of clients.filter((x) => x.retainerExVat > 0 && x.startDate && x.startDate <= m)) {
+      const due = amountDue(c);
+      ytd.push({ clientId: c.id, period: m, amountDue: due, amountCollected: due, dueDate: m, paidDate: `${m.slice(0, 8)}0${(c.id % 6) + 2}`, method: c.billingMethod });
+    }
+  }
+  if (ytd.length) await db.insert(schema.payments).values(ytd);
   await generateMonth(addMonths(now, -2));
   await generateMonth(addMonths(now, -1));
   await generateMonth(now);
@@ -64,24 +73,43 @@ async function main() {
   };
   const [apex, spraywise, marlor, crosbie, newHeights] = clients.slice(4);
   await db.insert(schema.tasks).values([
-    { clientId: clients[0].id, title: "Refresh static ads (creative fatigue)", priority: "high", dueDate: today(), source: "agent", details: "Frequency is 3.4 and CTR is down 18% on the last 4 weeks. Swap in 3 new statics." },
-    { clientId: clients[1].id, title: "Build long-term nurture flow in GHL", priority: "medium", dueDate: today() },
-    { clientId: clients[3].id, title: "Get Meta Business partner access", priority: "high", dueDate: today() },
-    { title: "Send Q1 pricing review to Alex", priority: "low" },
-    { clientId: clients[2].id, title: "Call John about untouched leads", priority: "high", dueDate: inDays(-2), source: "agent" },
-    { clientId: apex.id, title: "Draft December offer creative", priority: "medium", dueDate: inDays(3) },
-    { clientId: spraywise.id, title: "Chase October balance (€537.50)", priority: "high", dueDate: inDays(-1), source: "agent" },
-    { clientId: newHeights.id, title: "Install Meta pixel on new landing page", priority: "medium", dueDate: inDays(6) },
-    { clientId: marlor.id, title: "Shoot before/after video at Rathfarnham job", priority: "low", dueDate: inDays(12) },
-    { clientId: apex.id, title: "Launch Black Friday campaign", status: "in_progress", priority: "high", dueDate: inDays(1) },
-    { clientId: crosbie.id, title: "Rewrite webinar lead form questions", status: "in_progress", priority: "medium", dueDate: inDays(4) },
-    { clientId: clients[0].id, title: "Set up missed-call text-back", status: "in_progress", priority: "low", dueDate: inDays(9) },
-    { clientId: marlor.id, title: "November report: check CPL breakdown", status: "review", priority: "medium", dueDate: today() },
-    { clientId: spraywise.id, title: "New lookalike audience from 2025 customers", status: "review", priority: "medium", dueDate: inDays(2), source: "agent" },
-    { clientId: crosbie.id, title: "Onboarding call notes into OS", status: "done", priority: "low", completedAt: new Date(Date.now() - 2 * 86_400_000) },
-    { clientId: apex.id, title: "Swap hero image on landing page", status: "done", priority: "medium", completedAt: new Date(Date.now() - 86_400_000) },
-    { clientId: clients[1].id, title: "Weekly report sent", status: "done", priority: "low", source: "agent", completedAt: new Date(Date.now() - 4 * 86_400_000) },
+    { assignee: "Jamie", clientId: clients[0].id, title: "Refresh static ads (creative fatigue)", priority: "high", dueDate: today(), source: "agent", details: "Frequency is 3.4 and CTR is down 18% on the last 4 weeks. Swap in 3 new statics." },
+    { assignee: "Niamh", clientId: clients[1].id, title: "Build long-term nurture flow in GHL", priority: "medium", dueDate: today() },
+    { assignee: "Alex", clientId: clients[3].id, title: "Get Meta Business partner access", priority: "high", dueDate: today() },
+    { assignee: "Jamie", title: "Send Q1 pricing review to Alex", priority: "low" },
+    { assignee: "Niamh", clientId: clients[2].id, title: "Call John about untouched leads", priority: "high", dueDate: inDays(-2), source: "agent" },
+    { assignee: "Alex", clientId: apex.id, title: "Draft December offer creative", priority: "medium", dueDate: inDays(3) },
+    { assignee: "Jamie", clientId: spraywise.id, title: "Chase October balance (€537.50)", priority: "high", dueDate: inDays(-1), source: "agent" },
+    { assignee: "Niamh", clientId: newHeights.id, title: "Install Meta pixel on new landing page", priority: "medium", dueDate: inDays(6) },
+    { assignee: "Alex", clientId: marlor.id, title: "Shoot before/after video at Rathfarnham job", priority: "low", dueDate: inDays(12) },
+    { assignee: "Jamie", clientId: apex.id, title: "Launch Black Friday campaign", status: "in_progress", priority: "high", dueDate: inDays(1) },
+    { assignee: "Niamh", clientId: crosbie.id, title: "Rewrite webinar lead form questions", status: "in_progress", priority: "medium", dueDate: inDays(4) },
+    { assignee: "Alex", clientId: clients[0].id, title: "Set up missed-call text-back", status: "in_progress", priority: "low", dueDate: inDays(9) },
+    { assignee: "Jamie", clientId: marlor.id, title: "November report: check CPL breakdown", status: "review", priority: "medium", dueDate: today() },
+    { assignee: "Niamh", clientId: spraywise.id, title: "New lookalike audience from 2025 customers", status: "review", priority: "medium", dueDate: inDays(2), source: "agent" },
+    { assignee: "Alex", clientId: crosbie.id, title: "Onboarding call notes into OS", status: "done", priority: "low", completedAt: new Date(Date.now() - 2 * 86_400_000) },
+    { assignee: "Jamie", clientId: apex.id, title: "Swap hero image on landing page", status: "done", priority: "medium", completedAt: new Date(Date.now() - 86_400_000) },
+    { assignee: "Niamh", clientId: clients[1].id, title: "Weekly report sent", status: "done", priority: "low", source: "agent", completedAt: new Date(Date.now() - 4 * 86_400_000) },
   ]);
+
+  // A month of finished work, so the team ratings have something to go on (some late).
+  const doneAgo = (n: number) => new Date(Date.now() - n * 86_400_000);
+  const doneHistory: { who: string; due: number; done: number }[] = [
+    { who: "Jamie", due: 3, done: 4 }, { who: "Jamie", due: 8, done: 9 }, { who: "Jamie", due: 12, done: 13 }, { who: "Jamie", due: 18, done: 19 }, { who: "Jamie", due: 22, done: 24 }, { who: "Jamie", due: 26, done: 27 }, { who: "Jamie", due: 9, done: 6 },
+    { who: "Niamh", due: 5, done: 6 }, { who: "Niamh", due: 11, done: 12 }, { who: "Niamh", due: 15, done: 10 }, { who: "Niamh", due: 20, done: 21 },
+    { who: "Alex", due: 6, done: 2 }, { who: "Alex", due: 14, done: 9 }, { who: "Alex", due: 21, done: 25 },
+  ];
+  await db.insert(schema.tasks).values(
+    doneHistory.map((h, n) => ({
+      clientId: clients[n % clients.length].id,
+      assignee: h.who,
+      title: ["Monthly creative refresh", "Check pixel events", "Send weekly report", "Update GHL pipeline", "Client call follow-up"][n % 5],
+      status: "done" as const,
+      priority: "medium" as const,
+      dueDate: inDays(-h.due),
+      completedAt: doneAgo(h.done),
+    })),
+  );
 
   // Four past weeks (manual rows, with the numbers), then this week scored by the rules from fixture numbers.
   const weeksAgo = (n: number) => {
@@ -196,6 +224,26 @@ async function main() {
     }
   }
   await db.insert(schema.reports).values(history);
+  // This week's reports: most sent, one still a draft, the rest not written yet.
+  const cur = weekPeriod(reportWeek().period);
+  await db.insert(schema.reports).values(
+    [clients[0], clients[1], apex, crosbie, marlor].map((c, n) => ({
+      clientId: c.id,
+      kind: "weekly" as const,
+      period: cur.period,
+      periodStart: cur.start,
+      periodEnd: cur.end,
+      leads: 20 + n * 4,
+      spend: 300 + n * 40,
+      cpl: Math.round(((300 + n * 40) / (20 + n * 4)) * 100) / 100,
+      status: n === 4 ? ("draft" as const) : ("sent" as const),
+      sentAt: n === 4 ? null : new Date(),
+      body: `${c.reportGreeting}, this is how we got on last week.\n\nLeads: ${20 + n * 4}\n\nJamie`,
+    })),
+  );
+  await db.insert(schema.briefs).values(
+    [apex, crosbie, clients[1]].map((c) => ({ clientId: c.id, kind: "inbox" as const, title: `Inbox ${today()}`, body: "Quick check-in about next week's offer. Replied." })),
+  );
 
   console.log(`Seeded ${clients.length} demo clients.`);
 }

@@ -12,6 +12,8 @@ export function CallPrepCard({ clientId, brief, lastRun, started }: { clientId: 
   const failed = lastRun && (lastRun.status === "error" || lastRun.status === "stopped") && (!brief || lastRun.startedAt > brief.createdAt);
   return (
     <Card
+      id="call-prep"
+      className="scroll-mt-24"
       title="Call prep"
       actions={
         <form action={prepForCall.bind(null, clientId)}>

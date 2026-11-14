@@ -32,7 +32,7 @@ export default async function TasksPage({ searchParams }: { searchParams: Promis
   const sp = await searchParams;
   const clientFilter = sp.client ? Number(sp.client) : undefined;
   const weekAgo = new Date(Date.now() - 7 * 86_400_000);
-  const [rows, clients] = await Promise.all([
+  const [rows, clients, people] = await Promise.all([
     db
       .select({ t: schema.tasks, client: schema.clients.name })
       .from(schema.tasks)
@@ -40,7 +40,10 @@ export default async function TasksPage({ searchParams }: { searchParams: Promis
       .where(and(or(ne(schema.tasks.status, "done"), gte(schema.tasks.completedAt, weekAgo)), clientFilter ? eq(schema.tasks.clientId, clientFilter) : undefined))
       .orderBy(schema.tasks.dueDate, desc(schema.tasks.createdAt)),
     db.select({ id: schema.clients.id, name: schema.clients.name }).from(schema.clients).orderBy(schema.clients.name),
+    db.select({ name: schema.users.name }).from(schema.users).where(eq(schema.users.active, true)).orderBy(schema.users.name),
   ]);
+  // Anyone with a login, plus names already used on tasks (agents and imports write free text).
+  const assignees = [...new Set([...people.map((p) => p.name), ...rows.map((r) => r.t.assignee).filter((a): a is string => !!a)])].sort();
   const t0 = today();
   const open = rows.filter((r) => r.t.status !== "done");
   const overdue = open.filter((r) => r.t.dueDate && r.t.dueDate < t0).length;
@@ -77,7 +80,7 @@ export default async function TasksPage({ searchParams }: { searchParams: Promis
       />
 
       <Card className="mb-6">
-        <form action={createTask} className="grid grid-cols-2 gap-3 lg:grid-cols-[minmax(0,2fr)_minmax(0,1.2fr)_8rem_10rem_auto] lg:items-end">
+        <form action={createTask} className="grid grid-cols-2 gap-3 lg:grid-cols-[minmax(0,2fr)_minmax(0,1.2fr)_minmax(0,1fr)_8rem_10rem_auto] lg:items-end">
           <div className="col-span-2 lg:col-span-1">
             <label className={label} htmlFor="task-title">
               New task
@@ -93,6 +96,19 @@ export default async function TasksPage({ searchParams }: { searchParams: Promis
               {clients.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="col-span-2 lg:col-span-1">
+            <label className={label} htmlFor="task-assignee">
+              Assigned to
+            </label>
+            <select id="task-assignee" name="assignee" defaultValue="" className={input}>
+              <option value="">Nobody yet</option>
+              {assignees.map((a) => (
+                <option key={a} value={a}>
+                  {a}
                 </option>
               ))}
             </select>
@@ -188,7 +204,14 @@ function TaskCard({ t, client, t0 }: { t: typeof schema.tasks.$inferSelect; clie
             <Icon name="spark" className="size-3" /> Agent
           </span>
         )}
-        {t.assignee && <span className="text-[11px] text-muted">· {t.assignee}</span>}
+        {t.assignee && (
+          <span className="ml-auto inline-flex items-center gap-1 text-[11px] text-soft" title={`Assigned to ${t.assignee}`}>
+            <span className="brand-gradient grid size-4 place-items-center rounded-full text-[9px] font-bold text-white" aria-hidden>
+              {t.assignee.slice(0, 1).toUpperCase()}
+            </span>
+            {t.assignee}
+          </span>
+        )}
       </div>
       <div className="mt-3 flex items-center gap-1.5 border-t border-line/70 pt-2.5">
         {prev && (

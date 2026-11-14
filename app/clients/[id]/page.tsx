@@ -4,12 +4,12 @@ import { and, desc, eq, like } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { amountDue, paymentState } from "@/lib/billing";
 import { can } from "@/lib/roles";
-import { eur, monthLabel } from "@/lib/dates";
+import { eur, monthLabel, today, weekStart } from "@/lib/dates";
 import { setupProgress } from "@/lib/setup";
+import { loadWeeklyStandards } from "@/lib/weekly-standard";
 import { updateClient } from "../../actions";
 import { Badge, Card, CardLink, DueChip, Empty, HealthDot, List, Progress, btnGhost, healthLabel } from "../../_components/ui";
 import { Icon } from "../../_components/icons";
-import { today } from "@/lib/dates";
 import { ClientForm } from "../client-form";
 import { ClientLogo } from "../../_components/client-logo";
 import { requireUser } from "@/lib/session";
@@ -41,6 +41,7 @@ export default async function ClientPage({ params, searchParams }: { params: Pro
       .orderBy(desc(schema.agentRuns.startedAt))
       .limit(1),
   ]);
+  const standard = (await loadWeeklyStandards({ billing: can(user.role, "payments"), clientIds: [id] })).get(id)!;
   const callPrep = briefs.find((b) => b.kind === "call_prep");
   const inboxNotes = briefs.filter((b) => b.kind === "inbox").slice(0, 3);
 
@@ -119,6 +120,42 @@ export default async function ClientPage({ params, searchParams }: { params: Pro
           </details>
         </div>
         <div className="space-y-6">
+          <Card
+            id="weekly-standard"
+            className="scroll-mt-24"
+            title="Weekly standard"
+            description={`Week of ${new Date(`${weekStart()}T12:00:00Z`).toLocaleDateString("en-IE", { day: "numeric", month: "short", timeZone: "UTC" })}`}
+            actions={
+              <Badge tone={standard.onStandard ? "green" : "yellow"} dot>
+                {standard.onStandard ? "On standard" : `${standard.done} of ${standard.total}`}
+              </Badge>
+            }
+          >
+            <Progress value={standard.done} max={standard.total} tone={standard.onStandard ? "green" : "brand"} label="Weekly standard progress" />
+            <ul className="mt-3 space-y-2.5 text-sm">
+              {standard.items.map((i) => (
+                <li key={i.key} className="flex gap-2.5">
+                  <span
+                    aria-hidden
+                    className={`mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full ${i.done ? "bg-emerald-500/15 text-emerald-300" : "ring-1 ring-amber-400/60 ring-inset"}`}
+                  >
+                    {i.done && <Icon name="check" className="size-3" />}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    {i.done ? (
+                      <span className="text-soft">{i.label}</span>
+                    ) : (
+                      <a href={i.href} className="font-medium text-amber-300 hover:underline">
+                        {i.label}
+                      </a>
+                    )}
+                    <span className="sr-only">{i.done ? " (done)" : " (not done)"}</span>
+                    <span className="block text-xs text-muted">{i.detail}</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </Card>
           <Card title="Set-up checklist" actions={<Badge tone={setup.complete ? "green" : "yellow"} dot>{setup.complete ? "Complete" : `${setup.done} of ${setup.total}`}</Badge>}>
             <Progress value={setup.done} max={setup.total} tone={setup.complete ? "green" : "brand"} label="Set-up progress" />
             <ul className="mt-3 space-y-2 text-sm">
