@@ -19,7 +19,9 @@ function real(): DB {
           : "DATABASE_URL is not set. See .env.example.",
       );
     }
-    g.__omSql = postgres(url, { max: 5, prepare: false });
+    // Serverless: many short-lived instances share Supabase's small session-mode pool (~15 clients),
+    // so keep few connections per instance and close idle ones quickly instead of holding them forever.
+    g.__omSql = postgres(url, { max: 3, idle_timeout: 15, max_lifetime: 60 * 10, connect_timeout: 10, prepare: false });
     g.__omDb = drizzle(g.__omSql, { schema });
   }
   return g.__omDb;

@@ -34,8 +34,10 @@ export async function login(_: unknown, form: FormData): Promise<{ error?: strin
   try {
     result = await signInWithPassword(email, password);
   } catch (e) {
-    console.error(e);
-    return { error: "Sign-in isn't available: the database or AUTH_SECRET isn't set up on the server yet." };
+    console.error("sign-in failed", e);
+    const msg = e instanceof Error ? e.message : String(e);
+    if (/AUTH_SECRET/i.test(msg)) return { error: "Sign-in isn't available: AUTH_SECRET isn't set on the server." };
+    return { error: "Sign-in couldn't reach the database just now. Wait a few seconds and try again." };
   }
   if (result.ok === "setup") {
     // Proves the ADMIN_PASSWORD for the next 15 minutes so /setup can create the first owner.
