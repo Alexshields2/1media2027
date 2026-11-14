@@ -10,6 +10,8 @@ const PAGES: { path: string; heading: RegExp }[] = [
   { path: "/reports", heading: /^Reports$/ },
   { path: "/approvals", heading: /^Approvals$/ },
   { path: "/agents", heading: /^Agents$/ },
+  { path: "/chat", heading: /^Jarvis$/ },
+  { path: "/chat/jarvis/settings", heading: /^Jarvis settings$/ },
 ];
 
 function collectErrors(page: Page): string[] {
@@ -68,4 +70,22 @@ test.describe("signed in", () => {
       expect(errors).toEqual([]);
     });
   }
+
+  test("chat: send a message and see the reply (or the missing-key notice) stream in", async ({ page }) => {
+    const errors = collectErrors(page);
+    await page.goto("/chat/jarvis");
+    await page.waitForLoadState("networkidle");
+    await page.getByLabel("Message Jarvis").fill("Who owes us money right now?");
+    await page.keyboard.press("Enter");
+    await expect(page.locator("[data-role=user]").last()).toContainText("Who owes us money right now?");
+    if (process.env.AGENTS_MOCK === "true" || process.env.ANTHROPIC_API_KEY) {
+      // The URL moves to the new conversation and the answer arrives.
+      await expect(page).toHaveURL(/\/chat\/jarvis\/\d+$/);
+      await expect(page.locator("[data-role=assistant]").last()).toContainText(/owed|overdue/i, { timeout: 30_000 });
+      await expect(page.getByRole("button", { name: "Regenerate" })).toBeVisible();
+    } else {
+      await expect(page.locator("p[role=alert]")).toContainText("ANTHROPIC_API_KEY");
+    }
+    expect(errors).toEqual([]);
+  });
 });

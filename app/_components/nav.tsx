@@ -27,6 +27,7 @@ const GROUPS: { title?: string; links: L[] }[] = [
   {
     title: "AI",
     links: [
+      { href: "/chat", label: "Chats", icon: "chat" },
       { href: "/approvals", label: "Approvals", icon: "shield" },
       { href: "/agents", label: "Agents", icon: "spark" },
     ],

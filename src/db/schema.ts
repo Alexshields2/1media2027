@@ -370,8 +370,95 @@ export interface ToolEvent {
   /** ISO time the call started, and how long it took. */
   at?: string;
   ms?: number;
+  /** The approval row a "proposed" call created (chat shows an Approve / Reject card for it). */
+  approvalId?: number;
+  /** Short human label for the chat, e.g. "Looked up payments for Apex Attics". */
+  label?: string;
 }
 
+// ---------- chat workspace ----------
+
+/**
+ * An agent as an editable profile: the owner writes its instructions and picks its tools.
+ * baseAgent optionally links a code agent in src/agents (its guardrail allow-list and excluded tools).
+ */
+export const agentProfiles = pgTable(
+  "agent_profiles",
+  {
+    id: serial("id").primaryKey(),
+    slug: text("slug").notNull(),
+    name: text("name").notNull(),
+    icon: text("icon").notNull().default("spark"),
+    description: text("description").notNull().default(""),
+    /** The owner-written prompt. */
+    instructions: text("instructions").notNull().default(""),
+    baseAgent: text("base_agent"),
+    /** Composio toolkit slugs this agent may use. */
+    toolkits: jsonb("toolkits").$type<string[]>().notNull().default([]),
+    /** OS_* database tools this agent may use. */
+    osTools: jsonb("os_tools").$type<string[]>().notNull().default([]),
+    autonomy: text("autonomy", { enum: ["L0", "L1", "L2"] }).notNull().default("L0"),
+    webSearch: boolean("web_search").notNull().default(false),
+    /** Only owners can see and use it (e.g. Payments). */
+    ownerOnly: boolean("owner_only").notNull().default(false),
+    active: boolean("active").notNull().default(true),
+    sortOrder: integer("sort_order").notNull().default(100),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("agent_profiles_slug").on(t.slug)],
+);
+
+/** One chat thread between a person and an agent profile. Only its owner sees it. */
+export const conversations = pgTable(
+  "conversations",
+  {
+    id: serial("id").primaryKey(),
+    agentProfileId: integer("agent_profile_id").notNull().references(() => agentProfiles.id, { onDelete: "cascade" }),
+    userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    title: text("title").notNull().default("New chat"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("conversations_user_agent").on(t.userId, t.agentProfileId, t.updatedAt)],
+);
+
+/** Attachment metadata shown in the chat (the bytes live in the message content blocks). */
+export interface ChatAttachment {
+  name: string;
+  mediaType: string;
+  size: number;
+}
+
+/**
+ * Messages exactly as sent to and received from the Messages API, in order: a person's message,
+ * the model's replies (text, tool calls, thinking, web search) and the tool results between them.
+ * Replaying the rows in order rebuilds the API history.
+ */
+export const chatMessages = pgTable(
+  "messages",
+  {
+    id: serial("id").primaryKey(),
+    conversationId: integer("conversation_id").notNull().references(() => conversations.id, { onDelete: "cascade" }),
+    role: text("role", { enum: ["user", "assistant"] }).notNull(),
+    /** Anthropic content blocks (BetaContentBlockParam[]). Attachments are stored here as base64 blocks. */
+    content: jsonb("content").$type<unknown[]>().notNull(),
+    /** Files the person attached (user messages). */
+    attachments: jsonb("attachments").$type<ChatAttachment[]>().notNull().default([]),
+    /** Tool calls the model made in this message and what happened to each (assistant messages). */
+    toolEvents: jsonb("tool_events").$type<ToolEvent[]>().notNull().default([]),
+    stopReason: text("stop_reason"),
+    inputTokens: integer("input_tokens").notNull().default(0),
+    outputTokens: integer("output_tokens").notNull().default(0),
+    cacheReadTokens: integer("cache_read_tokens").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("messages_conversation").on(t.conversationId, t.id)],
+);
+
+export type AgentProfile = typeof agentProfiles.$inferSelect;
+export type Conversation = typeof conversations.$inferSelect;
+export type ChatMessage = typeof chatMessages.$inferSelect;
 export type Client = typeof clients.$inferSelect;
 export type Payment = typeof payments.$inferSelect;
 export type Task = typeof tasks.$inferSelect;
