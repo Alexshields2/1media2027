@@ -325,7 +325,7 @@ export default async function Dashboard() {
             {[
               { href: "/approvals", icon: "shield" as const, label: "Approvals waiting", value: pending.length },
               { href: "/agents", icon: "spark" as const, label: "Agent runs failed, 7 days", value: failedRuns },
-              ...(revenue ? [{ href: "/payments#aging", icon: "alert" as const, label: `Overdue payments · ${eur(revenue.overdueTotal)}`, value: revenue.overdueCount }] : []),
+              ...(revenue ? [{ href: "/payments?view=month#aging", icon: "alert" as const, label: `Overdue payments · ${eur(revenue.overdueTotal)}`, value: revenue.overdueCount }] : []),
             ].map((r) => (
               <li key={r.href}>
                 <Link href={r.href} className="group flex items-center gap-3 rounded-xl border border-line bg-canvas/50 px-3 py-2.5 transition-colors hover:border-brand/40">

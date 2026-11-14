@@ -194,7 +194,7 @@ export async function addPaymentAction(form: FormData) {
 // ---------- reconciliation ----------
 
 const back = (form: FormData, extra: Record<string, string>) => {
-  const q = new URLSearchParams(extra);
+  const q = new URLSearchParams({ view: "month", ...extra });
   const month = str(form, "month");
   if (month) q.set("month", month);
   return `/payments?${q.toString()}#reconcile`;
@@ -250,7 +250,7 @@ export async function saveCashSummaryAction(form: FormData) {
   await requirePermission("payments", "Payments");
   await saveCashSummary();
   revalidatePath("/payments");
-  const q = new URLSearchParams();
+  const q = new URLSearchParams({ view: "month" });
   const month = str(form, "month");
   if (month) q.set("month", month);
   redirect(`/payments?${q.toString()}#cash-summary`);

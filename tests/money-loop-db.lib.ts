@@ -4,7 +4,8 @@ import { db, schema } from "../src/db";
 import { generateMonth, paymentState } from "../src/lib/billing";
 
 export { handleStripeEvent } from "../src/lib/stripe-webhook";
-export { assignIncoming, ignoreIncoming, importBankCsv, listUnmatched } from "../src/lib/reconcile";
+export { assignIncoming, assignIncomingParts, ignoreIncoming, importBankCsv, listUnmatched } from "../src/lib/reconcile";
+export { editPayment, loadPaymentLog, tickPayments, untickPayments } from "../src/lib/payment-log";
 export { SUGGEST_AT } from "../src/lib/matching";
 export { paymentState };
 
@@ -53,4 +54,28 @@ export async function resetClient(name: string) {
   await db.update(schema.payments).set({ amountCollected: 0, paidDate: null, method: null, notes: null, stripeInvoiceId: null }).where(eq(schema.payments.clientId, c.id));
   await db.delete(schema.incomingPayments).where(eq(schema.incomingPayments.clientId, c.id));
   await db.update(schema.clients).set({ stripeCustomerId: null }).where(eq(schema.clients.id, c.id));
+}
+
+/** Every payment row's money fields, to prove something didn't change them. */
+export async function paymentSnapshot() {
+  const rows = await db.select().from(schema.payments).orderBy(schema.payments.id);
+  return rows.map((r) => ({ id: r.id, amountCollected: r.amountCollected, paidDate: r.paidDate, method: r.method, stripeInvoiceId: r.stripeInvoiceId }));
+}
+
+export async function incomingById(id: number) {
+  const [i] = await db.select().from(schema.incomingPayments).where(eq(schema.incomingPayments.id, id));
+  return i;
+}
+
+export async function deleteIncoming(stripeInvoiceIds: string[]) {
+  for (const id of stripeInvoiceIds) await db.delete(schema.incomingPayments).where(eq(schema.incomingPayments.stripeInvoiceId, id));
+}
+
+export async function auditFor(target: string) {
+  return db.select().from(schema.auditLog).where(eq(schema.auditLog.target, target)).orderBy(schema.auditLog.id);
+}
+
+export async function addOwner() {
+  const [u] = await db.insert(schema.users).values({ email: "owner@example.com", name: "Owner", role: "owner" }).returning();
+  return u;
 }

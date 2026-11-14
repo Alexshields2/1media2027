@@ -1,7 +1,7 @@
 import "../src/config";
 import { eq } from "drizzle-orm";
 import { db, schema, closeDb } from "../src/db";
-import { amountDue, generateMonth } from "../src/lib/billing";
+import { amountDue } from "../src/lib/billing";
 import { addMonths, eur, monthStart, weekStart, today } from "../src/lib/dates";
 import { metaInsights, metaLeadCount } from "../src/lib/fixtures/ads-fixtures";
 import { reportWeek, shiftWeek, weekPeriod, deriveMetrics } from "../src/lib/report-metrics";
@@ -34,44 +34,65 @@ async function main() {
     ])
     .returning();
 
-  const now = monthStart();
-  // Earlier this year: one paid retainer per month for each client that had started by then.
-  const ytd = [];
-  for (let m = `${now.slice(0, 4)}-01-01`; m < addMonths(now, -2); m = addMonths(m, 1)) {
-    for (const c of clients.filter((x) => x.retainerExVat > 0 && x.startDate && x.startDate <= m)) {
-      const due = amountDue(c);
-      ytd.push({ clientId: c.id, period: m, amountDue: due, amountCollected: due, dueDate: m, paidDate: `${m.slice(0, 8)}0${(c.id % 6) + 2}`, method: c.billingMethod });
-    }
-  }
-  if (ytd.length) await db.insert(schema.payments).values(ytd);
-  await generateMonth(addMonths(now, -2));
-  await generateMonth(addMonths(now, -1));
-  await generateMonth(now);
-
-  // Two months ago: everyone paid except one. Last month: most paid, one part paid, two still owed.
-  // This month: about half collected so far.
-  const all = await db.select().from(schema.payments);
-  const byName = new Map(clients.map((c) => [c.id, c.name]));
-  const pay = async (p: (typeof all)[number], amount: number, day: string) =>
-    db.update(schema.payments).set({ amountCollected: amount, paidDate: `${p.period.slice(0, 8)}${day}` }).where(eq(schema.payments.id, p.id));
-  for (const p of all) {
-    const name = byName.get(p.clientId) ?? "";
-    if (p.period === addMonths(now, -2)) {
-      if (name !== "Demo Bathrooms") await pay(p, p.amountDue, "06");
-    } else if (p.period === addMonths(now, -1)) {
-      if (name === "Spraywise") await pay(p, 1000, "12");
-      else if (!["Demo Bathrooms", "New Heights Attics and Construction"].includes(name)) await pay(p, p.amountDue, "05");
-    } else if (["Demo Paving Co", "Apex Attics", "Crosbie Coaching", "Demo Attic Conversions"].includes(name)) {
-      await pay(p, p.amountDue, "04");
-    }
-  }
-
   const inDays = (n: number) => {
     const d = new Date(`${today()}T12:00:00Z`);
     d.setUTCDate(d.getUTCDate() + n);
     return d.toISOString().slice(0, 10);
   };
+
+  // Payment history, Jan to this month, like the Notion "Payment Collection" log: most months paid on time,
+  // some paid late or together, a part payment, a client who stopped paying, a paused client, and a client
+  // with two lines a month (retainer + AI assistant).
+  const now = monthStart();
+  const year = now.slice(0, 4);
+  const months: string[] = [];
+  for (let m = `${year}-01-01`; m <= now; m = addMonths(m, 1)) months.push(m);
+  const pausedFrom: Record<string, string> = { "Snag List Steve": `${year}-07-01` };
+  const day = (m: string, d: number) => `${m.slice(0, 8)}${String(d).padStart(2, "0")}`;
+  type Plan = { collected?: number; paid?: string; note?: string };
+  const plan = (c: (typeof clients)[number], label: string, m: string, due: number): Plan => {
+    const ago = months.length - 1 - months.indexOf(m);
+    const mm = m.slice(5, 7);
+    const full: Plan = { collected: due, paid: day(m, (c.id % 6) + 2) };
+    if (ago === 0) return label === "Retainer" && ["Demo Paving Co", "Apex Attics", "Crosbie Coaching", "Demo Attic Conversions"].includes(c.name) ? { ...full, paid: day(m, 4) } : {};
+    if (c.name === "Demo Bathrooms" && ago <= 3) return ago === 3 ? { note: "Said they'd pay August and September together." } : {};
+    if (ago === 1) {
+      if (c.name === "Spraywise") return { collected: 1000, paid: day(m, 12), note: "Part payment. Balance promised with November." };
+      if (c.name === "New Heights Attics and Construction" || (c.name === "Apex Attics" && label !== "Retainer")) return {};
+      return full;
+    }
+    if (c.name === "Spraywise" && mm === "06") return { collected: 800, paid: day(m, 20), note: "Paid €800. Balance to follow." };
+    if (c.name === "Snag List Steve" && mm === "06") return { note: "Paused from July. June still owed." };
+    if (c.name === "Marlor Bathrooms" && mm === "04") return { collected: due, paid: day(addMonths(m, 1), 9), note: "Paid April and May together." };
+    if (c.name === "Marlor Bathrooms" && mm === "05") return { collected: due, paid: day(m, 9) };
+    if (c.name === "Demo Attic Conversions" && mm === "03") return { collected: due, paid: day(addMonths(m, 1), 20), note: "Paid late, chased twice." };
+    return full;
+  };
+  const paymentRows = [];
+  for (const m of months) {
+    for (const c of clients) {
+      if (c.retainerExVat <= 0 || !c.startDate || c.startDate.slice(0, 7) > m.slice(0, 7)) continue;
+      if (pausedFrom[c.name] && m >= pausedFrom[c.name]) continue;
+      const lines: [string, number][] = [["Retainer", amountDue(c)]];
+      if (c.name === "Apex Attics" && m >= `${year}-06-01`) lines.push(["AI assistant", 121.77]);
+      for (const [label, due] of lines) {
+        const p = plan(c, label, m, due);
+        paymentRows.push({ clientId: c.id, label, period: m, amountDue: due, amountCollected: p.collected ?? 0, dueDate: m, paidDate: p.paid ?? null, method: c.billingMethod, notes: p.note ?? null });
+      }
+    }
+  }
+  if (paymentRows.length) await db.insert(schema.payments).values(paymentRows);
+
   const [apex, spraywise, marlor, crosbie, newHeights] = clients.slice(4);
+
+  // Stripe payments waiting for the owner to say which month they cover (never applied automatically):
+  // Crosbie paying December ahead, Apex's October AI line paid late, and Spraywise's October balance from a
+  // Stripe customer that isn't linked to the client yet.
+  await db.insert(schema.incomingPayments).values([
+    { source: "stripe", externalId: "in_DemoCrosbieDec@75000", receivedDate: inDays(-2), amount: 750, payer: "Crosbie Coaching", reference: "1M-0061", description: "Stripe invoice 1M-0061", stripeCustomerId: "cus_DemoCrosbie", stripeInvoiceId: "in_DemoCrosbieDec", clientId: crosbie.id },
+    { source: "stripe", externalId: "in_DemoApexAiOct@12177", receivedDate: inDays(-4), amount: 121.77, payer: "Apex Attics", reference: "1M-0058", description: "Stripe invoice 1M-0058", stripeCustomerId: "cus_DemoApex", stripeInvoiceId: "in_DemoApexAiOct", clientId: apex.id },
+    { source: "stripe", externalId: "in_DemoSprayOct@53750", receivedDate: inDays(-1), amount: 537.5, payer: "Spraywise Insulation Ltd", reference: "1M-0063", description: "Stripe invoice 1M-0063", stripeCustomerId: "cus_DemoSpray", stripeInvoiceId: "in_DemoSprayOct", notes: "No client has Stripe customer cus_DemoSpray. Pick the client when you assign it (you can save the customer ID on them)." },
+  ]);
   await db.insert(schema.tasks).values([
     { assignee: "Jamie", clientId: clients[0].id, title: "Refresh static ads (creative fatigue)", priority: "high", dueDate: today(), source: "agent", details: "Frequency is 3.4 and CTR is down 18% on the last 4 weeks. Swap in 3 new statics." },
     { assignee: "Niamh", clientId: clients[1].id, title: "Build long-term nurture flow in GHL", priority: "medium", dueDate: today() },
