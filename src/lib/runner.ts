@@ -5,12 +5,13 @@ import { MODEL, config, requireEnv } from "../config";
 import { db, schema } from "../db";
 import type { ToolEvent, AgentRun } from "../db/schema";
 import { composio, loadComposioTools, composioEnabled } from "./composio";
-import { decide, type Autonomy } from "./guardrails";
-import { osToolDefs, isOsTool, runOsTool, ALL_OS_TOOLS } from "./os-tools";
+import type { Autonomy } from "./guardrails";
+import { osToolDefs, ALL_OS_TOOLS } from "./os-tools";
+import { handleToolCall, isExcluded, type ExternalTools } from "./tool-call";
 import { today } from "./dates";
 import { notify, notifyApprovals } from "./slack";
 import { describeAction } from "./approvals";
-import { houseRules } from "../agents/house-rules";
+import { assembleSystemPrompt, runAutonomyNote } from "./prompt";
 import type { AgentDefinition, AgentContext } from "../agents/types";
 
 /** AGENTS_MOCK=true swaps the model and Meta/GHL for scripted fixtures (local demos and previews; never production). */
@@ -31,11 +32,7 @@ async function mockDepsIfEnabled(): Promise<RunDeps | undefined> {
 
 /** House rules + the agent's own prompt. Kept stable (no dates) so it caches across runs. */
 function systemPrompt(agent: AgentDefinition, autonomy: Autonomy): string {
-  return [
-    houseRules,
-    `# Your role: ${agent.name}\n\n${agent.prompt}`,
-    `# Your autonomy level: ${autonomy}\n\nWrite actions you are not cleared for come back as "PROPOSED" or "BLOCKED" instead of running. That is expected: carry on, and list every proposed action in your final summary so a human can approve it.`,
-  ].join("\n\n---\n\n");
+  return assembleSystemPrompt(agent.name, agent.prompt, runAutonomyNote(autonomy));
 }
 
 /** The one Messages API call the runner makes. Swappable so tests (and AGENTS_MOCK) can script the model. */
@@ -46,11 +43,7 @@ export interface ModelClient {
 /** An Anthropic-SDK-shaped client (`client.beta.messages.create`); tests may pass a fake of this instead of a ModelClient. */
 export type SdkLikeClient = { beta: { messages: { create: Anthropic["beta"]["messages"]["create"] } } };
 
-/** External (non-OS) tools: Composio in production, fixtures in tests. */
-export interface ExternalTools {
-  defs: Anthropic.Beta.BetaToolUnion[];
-  execute(name: string, input: Record<string, unknown>, callId: string): Promise<string>;
-}
+export type { ExternalTools };
 
 export interface RunDeps {
   model?: ModelClient;
@@ -187,7 +180,8 @@ export async function executeRun(run: AgentRun, agent: AgentDefinition, opts: Ru
 
       const calls = res.content.filter((b): b is Anthropic.Beta.BetaToolUseBlock => b.type === "tool_use");
       // Run the calls in parallel, then return every result in one user message.
-      const results = await Promise.all(calls.map((c) => handleCall(c, agent, autonomy, run.id, events, turn + 1, external)));
+      const policy = { agent: agent.name, autonomy, allow: agent.allow, excludeTools: agent.excludeTools };
+      const results = await Promise.all(calls.map((c) => handleToolCall(c, policy, { runId: run.id, turn: turn + 1, events, external })));
       messages.push({ role: "user", content: results });
       // Save progress so the run page shows tool calls while the run is still going.
       await db.update(schema.agentRuns).set(progress()).where(eq(schema.agentRuns.id, run.id)).catch(() => {});
@@ -246,54 +240,4 @@ export function runUrl(id: number): string | undefined {
   return base ? `${base.replace(/\/$/, "")}/agents/runs/${id}` : undefined;
 }
 
-/** True when the agent definition forbids this tool (it is neither offered nor run). */
-export function isExcluded(agent: Pick<AgentDefinition, "excludeTools">, name: string): boolean {
-  return (agent.excludeTools ?? []).some((re) => re.test(name.toUpperCase()));
-}
-
-async function handleCall(
-  call: Anthropic.Beta.BetaToolUseBlock,
-  agent: AgentDefinition,
-  autonomy: Autonomy,
-  runId: number,
-  events: ToolEvent[],
-  turn: number,
-  external: ExternalTools,
-): Promise<Anthropic.Beta.BetaToolResultBlockParam> {
-  const input = (call.input ?? {}) as Record<string, unknown>;
-  const d = isExcluded(agent, call.name)
-    ? ({ action: "block", reason: `${agent.name} may not use ${call.name}.` } as const)
-    : decide(call.name, autonomy, agent.allow);
-  const started = Date.now();
-  const event: ToolEvent = { id: call.id, tool: call.name, input, outcome: "ran", turn, at: new Date(started).toISOString() };
-  events.push(event);
-
-  if (d.action === "block") {
-    event.outcome = "blocked";
-    event.note = d.reason;
-    return { type: "tool_result", tool_use_id: call.id, is_error: true, content: `BLOCKED: ${d.reason} Do not retry this action.` };
-  }
-
-  if (d.action === "propose") {
-    event.outcome = "proposed";
-    event.note = d.reason;
-    await db.insert(schema.approvals).values({ runId, agent: agent.name, tool: call.name, input, reason: d.reason });
-    return {
-      type: "tool_result",
-      tool_use_id: call.id,
-      content: `PROPOSED (not executed): ${d.reason} It is queued in the 1Media OS approvals page. Continue as if it will be done, and list it in your summary.`,
-    };
-  }
-
-  try {
-    const out = isOsTool(call.name) ? await runOsTool(call.name, input, { runId, agent: agent.name }) : await external.execute(call.name, input, call.id);
-    event.result = out.length > 8000 ? out.slice(0, 8000) + "…[truncated in log only]" : out;
-    event.ms = Date.now() - started;
-    return { type: "tool_result", tool_use_id: call.id, content: out };
-  } catch (err) {
-    event.outcome = "error";
-    event.note = err instanceof Error ? err.message : String(err);
-    event.ms = Date.now() - started;
-    return { type: "tool_result", tool_use_id: call.id, is_error: true, content: `Tool error: ${event.note}` };
-  }
-}
+export { isExcluded };

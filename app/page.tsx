@@ -5,11 +5,13 @@ import { mrr, monthTotals, overdue } from "@/lib/billing";
 import { can } from "@/lib/roles";
 import { requireUser } from "@/lib/session";
 import { eur, monthLabel, monthStart, today, weekStart } from "@/lib/dates";
-import { recentFailedRuns, recentJarvisRuns, runState, runTone, toPoll } from "@/lib/runs";
+import { recentFailedRuns, runState, runTone } from "@/lib/runs";
+import { modelReady } from "@/lib/runner";
 import { Badge, DueChip } from "./_components/ui";
 import { ClientLogo } from "./_components/client-logo";
 import { Icon, type IconName } from "./_components/icons";
-import { JarvisBox, type JarvisItem } from "./_components/jarvis";
+import { AskJarvis } from "./chat/_components/ask-jarvis";
+import { recentChats } from "./chat/load";
 import { greeting } from "./_components/owner";
 
 export const dynamic = "force-dynamic";
@@ -39,18 +41,13 @@ export default async function Home() {
       .limit(6),
     db.select().from(schema.agentRuns).orderBy(desc(schema.agentRuns.startedAt)).limit(5),
     recentFailedRuns(24),
-    recentJarvisRuns(5),
+    recentChats(user, "jarvis", 5),
   ]);
 
   const late = money?.late ?? [];
   const lateTotal = late.reduce((s, r) => s + r.owed, 0);
   const firstName = user.name.split(" ")[0] || user.name;
-  const apiReady = !!process.env.ANTHROPIC_API_KEY;
-
-  const history: JarvisItem[] = asked.map((r) => {
-    const p = toPoll(r);
-    return { key: `r${r.id}`, runId: r.id, question: p.question ?? "", status: p.status, answer: p.answer, error: p.error, toolCalls: p.toolCalls, startedAt: p.startedAt };
-  });
+  const apiReady = modelReady();
 
   const inbox: InboxItem[] = [
     ...failedRuns.map((r) => ({
@@ -82,7 +79,7 @@ export default async function Home() {
         </h1>
         <p className="mt-3 max-w-md text-center text-sm text-muted">Ask about any client, payment, report or task. Jarvis reads the whole OS.</p>
 
-        <JarvisBox suggestions={SUGGESTIONS.filter((s) => money || !/money/i.test(s))} initial={history} apiReady={apiReady} />
+        <AskJarvis suggestions={SUGGESTIONS.filter((s) => money || !/money/i.test(s))} recent={asked} apiReady={apiReady} />
 
         <div className="mt-10 grid w-full max-w-xl grid-cols-2 gap-2 sm:grid-cols-4">
           {(

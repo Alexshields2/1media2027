@@ -50,6 +50,13 @@
       "when": 1794409754739,
       "tag": "0006_health_signals_briefs",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1794656080442,
+      "tag": "0007_agent_chat",
+      "breakpoints": true
     }
   ]
 }

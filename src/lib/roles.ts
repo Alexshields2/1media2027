@@ -14,7 +14,8 @@ export type Permission =
   | "approve_finance" // approve or reject finance / Stripe actions
   | "run_finance_agent"
   | "manage_users" // add people, reset passwords, change roles
-  | "view_audit";
+  | "view_audit"
+  | "manage_agents"; // create and edit chat agents (instructions, tools, autonomy)
 
 const TEAM: ReadonlySet<Permission> = new Set<Permission>([]);
 
@@ -24,8 +25,16 @@ export function can(role: Role | null | undefined, permission: Permission): bool
   return false;
 }
 
-/** Agents whose actions are about money. */
-const FINANCE_AGENTS = new Set(["finance"]);
+/** Agents whose actions are about money ("payments" is the finance chat agent). */
+const FINANCE_AGENTS = new Set(["finance", "payments"]);
+
+/** 1Media OS tools that read or move money. Team members never get these, in any agent. */
+export const MONEY_OS_TOOLS = ["OS_LIST_PAYMENTS", "OS_RECORD_PAYMENT", "OS_GET_RECEIVABLES", "OS_QUEUE_CHASER", "OS_SAVE_CASH_SUMMARY"];
+
+/** True for a tool a team member may not use: the OS money tools, Stripe, and anything about payments or invoices. */
+export function isMoneyTool(tool: string): boolean {
+  return MONEY_OS_TOOLS.includes(tool.toUpperCase()) || isFinanceAction("", tool);
+}
 
 /** True when an approval (or agent action) moves money or touches billing. */
 export function isFinanceAction(agent: string, tool: string): boolean {

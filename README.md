@@ -13,6 +13,7 @@ The operating system for 1Media: clients, cash, delivery and the AI agents that 
 | **Client health** | Weekly traffic light per client, scored from the numbers (CPL vs target, lead volume vs the previous 4 weeks, creative fatigue, GHL leads untouched over 24h) with the reason for each, and a 6-week history |
 | **Reports** | Per-client week view: spend, leads, CPL, impressions, clicks and CTR with week-on-week change, the WhatsApp-ready text (copy for WhatsApp, mark sent), and a run-status strip with a Retry button per client. Month-end view with a PDF per client (download, or saved to the client's Drive folder) |
 | **Approvals** | Anything an agent wants to send, charge or change outside the OS waits here. Approve runs it; reject drops it |
+| **Chats** | A Claude-style chat per agent (Jarvis, Fulfilment, Reporting, Project management, Payments, Sales, Inbox, Client health). Streaming answers, tool calls shown inline, Approve / Reject cards for proposed actions, file attachments (PDF, images, CSV, XLSX, text; 4 MB per message). Owners write each agent's instructions and pick its tools, autonomy and web search on its settings page, and can create new agents |
 | **Agents** | Run any agent now (dry run by default) and read every run's summary and tool calls |
 | **Settings** | People and roles (owner / team), password resets, integration status, audit log |
 
