@@ -34,8 +34,29 @@ const INTERNAL_TOOLKITS = ["OS", "GOOGLEDRIVE", "GOOGLESHEETS", "GOOGLEDOCS", "H
 /** Write actions that only prepare something, never send it. Safe at L1. */
 const DRAFT_ONLY = [/^GMAIL_CREATE_EMAIL_DRAFT/, /^GMAIL_.*DRAFT/, /^GMAIL_ADD_LABEL/, /^GMAIL_.*LABEL/];
 
+/**
+ * Verbs that change something. A slug containing any of these is a write, even if it also
+ * contains a read verb (OS_SAVE_HEALTH_CHECK, X_CREATE_CHECK, X_FIND_OR_CREATE_CONTACT).
+ * Erring towards "write" is the safe direction: a misread read is just gated, a misread write runs.
+ */
+const WRITE_VERBS = [
+  "SAVE", "CREATE", "UPDATE", "RECORD", "QUEUE", "SEND", "ADD", "SET", "PUT", "POST", "PATCH",
+  "INSERT", "UPSERT", "APPEND", "WRITE", "EDIT", "MODIFY", "REPLACE", "MOVE", "COPY", "DUPLICATE",
+  "UPLOAD", "IMPORT", "PUBLISH", "SCHEDULE", "SHARE", "INVITE", "REPLY", "FORWARD",
+  "MARK", "ASSIGN", "APPROVE", "REJECT", "CANCEL", "PAUSE", "RESUME", "START", "STOP", "RUN",
+  "EXECUTE", "TRIGGER", "ENABLE", "DISABLE", "CHARGE", "PAY", "REFUND", "PAYOUT", "TRANSFER",
+  "DELETE", "TRASH", "ARCHIVE", "REMOVE", "CLEAR", "RESET", "RENAME", "TAG", "UNTAG", "LABEL",
+  "SUBSCRIBE", "UNSUBSCRIBE", "BOOK", "CONFIRM", "COMPLETE", "CLOSE", "OPEN", "RESTORE", "SYNC",
+];
+
+/**
+ * A slug is a read only if no part (after the toolkit prefix) is a write verb and some part is a
+ * read verb. Composio puts the verb first (HIGHLEVEL_SEARCH_CONTACTS) or last
+ * (GOOGLECALENDAR_EVENTS_LIST), so position alone isn't reliable.
+ */
 export function isRead(slug: string): boolean {
   const parts = slug.toUpperCase().split("_").slice(1); // drop toolkit prefix
+  if (parts.some((p) => WRITE_VERBS.includes(p))) return false;
   return parts.some((p) => READ_VERBS.includes(p));
 }
 

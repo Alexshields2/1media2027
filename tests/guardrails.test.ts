@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { decide } from "../src/lib/guardrails";
+import { decide, isRead } from "../src/lib/guardrails";
 
 const cases: [string, "L0" | "L1" | "L2" | "L3", "run" | "propose" | "block"][] = [
   // reads always run
@@ -10,6 +10,9 @@ const cases: [string, "L0" | "L1" | "L2" | "L3", "run" | "propose" | "block"][] 
   ["FACEBOOK_GET_PAGE_SETTINGS", "L0", "run"],
   // L0 blocks writes
   ["OS_CREATE_TASK", "L0", "block"],
+  // a write whose name contains a read verb is still a write
+  ["OS_SAVE_HEALTH_CHECK", "L0", "block"],
+  ["X_CREATE_CHECK", "L0", "block"],
   // drafts are safe from L1
   ["GMAIL_CREATE_EMAIL_DRAFT", "L1", "run"],
   // L1 proposes writes
@@ -36,4 +39,18 @@ for (const [slug, level, expected] of cases) {
 
 test("allow list lets a specific write run at L1", () => {
   assert.equal(decide("OS_SAVE_REPORT", "L1", ["OS_SAVE_REPORT"]).action, "run");
+});
+
+test("every OS tool and common Composio slug classifies correctly", () => {
+  const reads = [
+    "OS_LIST_CLIENTS", "OS_LIST_HEALTH", "OS_LIST_PAYMENTS", "OS_LIST_REPORTS", "OS_LIST_TASKS",
+    "GOOGLECALENDAR_EVENTS_LIST", "HIGHLEVEL_SEARCH_CONTACTS", "GMAIL_FETCH_EMAILS",
+    "METAADS_GET_INSIGHTS", "FACEBOOK_GET_PAGE_SETTINGS",
+  ];
+  const writes = [
+    "OS_CREATE_TASK", "OS_RECORD_PAYMENT", "OS_SAVE_HEALTH_CHECK", "OS_SAVE_REPORT",
+    "GMAIL_ADD_LABEL_TO_EMAIL", "GMAIL_CREATE_EMAIL_DRAFT", "GMAIL_SEND_EMAIL", "X_CREATE_CHECK",
+  ];
+  for (const s of reads) assert.equal(isRead(s), true, s);
+  for (const s of writes) assert.equal(isRead(s), false, s);
 });
