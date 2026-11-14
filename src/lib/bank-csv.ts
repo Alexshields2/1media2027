@@ -27,6 +27,11 @@ export interface BankFormat {
     id?: string[];
     state?: string[];
     type?: string[];
+    /** Money-out extras (expenses). */
+    card?: string[];
+    account?: string[];
+    mcc?: string[];
+    fee?: string[];
   };
   /** Date order in the export. ISO dates (with optional time) are always understood. */
   dateOrder: "dmy" | "iso";
@@ -34,6 +39,8 @@ export interface BankFormat {
   okStates?: string[];
   /** Rows whose type column is in this list are skipped (e.g. card payments, exchanges). */
   skipTypes?: string[];
+  /** Money-out rows whose type column is in this list are not expenses (e.g. currency exchanges). */
+  debitSkipTypes?: string[];
   defaultCurrency: string;
 }
 
@@ -53,10 +60,15 @@ export const BANK_FORMATS: BankFormat[] = [
       id: ["ID", "Transaction ID"],
       state: ["State"],
       type: ["Type"],
+      card: ["Card number"],
+      account: ["Account"],
+      mcc: ["MCC"],
+      fee: ["Fee"],
     },
     dateOrder: "iso",
     okStates: ["COMPLETED"],
     skipTypes: ["EXCHANGE", "CARD_PAYMENT", "CARD_REFUND", "FEE", "ATM"],
+    debitSkipTypes: ["EXCHANGE", "CARD_REFUND", "TOPUP", "REFUND"],
     defaultCurrency: "EUR",
   },
   {
@@ -88,9 +100,31 @@ export interface BankCredit {
   description: string;
 }
 
+/** Money out (an expense candidate). amount is positive. */
+export interface BankDebit {
+  /** "revolut:<transaction id>" (the same ID the Revolut API uses), "<id>:fee" for a fee on it, or a row hash. */
+  externalId: string;
+  date: string;
+  amount: number;
+  currency: string;
+  /** Merchant or payee, e.g. "Canva" or "Acme Ltd" (from "To Acme Ltd"). */
+  counterparty: string;
+  description: string;
+  reference: string | null;
+  /** Bank's own type, upper case (CARD_PAYMENT, TRANSFER, FEE, ATM, Debit…). */
+  type: string | null;
+  cardLast4: string | null;
+  account: string | null;
+  mcc: string | null;
+  /** A transfer to another of our own accounts (excluded from totals). */
+  ownTransfer: boolean;
+}
+
 export interface ParsedBankCsv {
   format: BankFormat;
   credits: BankCredit[];
+  /** Money out, for Expenses. The Payments page ignores these. */
+  debits: BankDebit[];
   /** Rows that were not credits (money out, pending, card payments) or couldn't be read. */
   skipped: number;
   errors: string[];
@@ -219,15 +253,73 @@ export function parseBankCsv(text: string, formatId?: BankFormat["id"]): ParsedB
     id: first(format.columns.id),
     state: first(format.columns.state),
     type: first(format.columns.type),
+    card: first(format.columns.card),
+    account: first(format.columns.account),
+    mcc: first(format.columns.mcc),
+    fee: first(format.columns.fee),
   };
   if (c.date === undefined) throw new Error(`No date column found for ${format.label}. Expected one of: ${format.columns.date.join(", ")}.`);
   if (c.amount === undefined && c.credit === undefined) throw new Error(`No amount or credit column found for ${format.label}.`);
 
   const credits: BankCredit[] = [];
+  const debits: BankDebit[] = [];
   const errors: string[] = [];
   const seen = new Map<string, number>();
+  const seenDebit = new Map<string, number>();
   let skipped = 0;
   const get = (r: string[], i: number | undefined) => (i === undefined ? undefined : r[i]?.trim());
+  // Our own account names in this export (Revolut "Account" column), to spot transfers between them.
+  const ownAccounts = new Set(c.account === undefined ? [] : rows.slice(headerIdx + 1).map((r) => get(r, c.account)?.toLowerCase()).filter((a): a is string => !!a));
+
+  /** Reads a money-out row; returns nothing for money in, unreadable rows and skipped types. */
+  const readDebit = (r: string[]) => {
+    const type = get(r, c.type)?.toUpperCase() || null;
+    if (type && format.debitSkipTypes?.includes(type)) return;
+    let amount: number | null;
+    if (c.debit !== undefined) {
+      if (parseAmount(get(r, c.credit))) return;
+      amount = parseAmount(get(r, c.debit));
+      if (!amount) return;
+      amount = Math.abs(amount);
+    } else {
+      const signed = parseAmount(get(r, c.amount));
+      if (signed === null || signed >= 0) return;
+      amount = -signed;
+    }
+    const date = parseDate(get(r, c.date), format.dateOrder);
+    if (!date) return;
+    const description = c.description.map((j) => r[j]?.trim()).filter(Boolean).join(" ").replace(/\s+/g, " ");
+    const counterparty = description.replace(/^(to|payment to|card payment to)\s+/i, "").trim() || description || "Unknown";
+    const currency = (get(r, c.currency) || format.defaultCurrency).toUpperCase();
+    const cardNo = get(r, c.card)?.replace(/\D/g, "") ?? "";
+    const account = get(r, c.account) || null;
+    const others = [...ownAccounts].filter((a) => a !== account?.toLowerCase());
+    const ownTransfer =
+      type === "TRANSFER" &&
+      (/^(to|from)\s+(my\s+)?(EUR|GBP|USD|CHF|PLN|SEK|NOK|DKK|CAD|AUD)\b/i.test(description) || others.some((a) => counterparty.toLowerCase() === a || description.toLowerCase().includes(a)));
+    const bankId = get(r, c.id);
+    let externalId: string;
+    if (bankId) externalId = `${format.id}:${bankId}`;
+    else {
+      const base = createHash("sha256").update(["debit", format.id, date, amount, description, r.join("|")].join("|")).digest("hex").slice(0, 24);
+      const n = (seenDebit.get(base) ?? 0) + 1;
+      seenDebit.set(base, n);
+      externalId = `${format.id}:${base}:${n}`;
+    }
+    const base = {
+      date,
+      currency,
+      reference: get(r, c.reference) || null,
+      cardLast4: cardNo.length >= 4 ? cardNo.slice(-4) : null,
+      account,
+      mcc: get(r, c.mcc) || null,
+    };
+    debits.push({ ...base, externalId, amount: Math.round(amount * 100) / 100, counterparty, description, type, ownTransfer });
+    const fee = Math.abs(parseAmount(get(r, c.fee)) ?? 0);
+    if (fee > 0 && bankId) {
+      debits.push({ ...base, externalId: `${externalId}:fee`, amount: fee, counterparty: "Revolut", description: `Fee on ${counterparty}`, type: "FEE", mcc: null, ownTransfer: false });
+    }
+  };
 
   for (let i = headerIdx + 1; i < rows.length; i++) {
     const r = rows[i];
@@ -236,6 +328,7 @@ export function parseBankCsv(text: string, formatId?: BankFormat["id"]): ParsedB
       skipped++;
       continue;
     }
+    readDebit(r);
     const type = get(r, c.type)?.toUpperCase();
     if (type && format.skipTypes?.includes(type)) {
       skipped++;
@@ -278,5 +371,5 @@ export function parseBankCsv(text: string, formatId?: BankFormat["id"]): ParsedB
     }
     credits.push({ externalId, date, amount, currency, payer, reference, description });
   }
-  return { format, credits, skipped, errors };
+  return { format, credits, debits, skipped, errors };
 }

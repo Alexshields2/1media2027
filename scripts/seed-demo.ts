@@ -6,6 +6,7 @@ import { addMonths, eur, monthStart, weekStart, today } from "../src/lib/dates";
 import { metaInsights, metaLeadCount } from "../src/lib/fixtures/ads-fixtures";
 import { reportWeek, shiftWeek, weekPeriod, deriveMetrics } from "../src/lib/report-metrics";
 import { scoreAndSaveHealth } from "../src/lib/health";
+import { insertExpenses, type ExpenseInput } from "../src/lib/expenses";
 
 // Fills an EMPTY database with made-up demo data so you can click around.
 //   npm run seed:demo
@@ -266,7 +267,33 @@ async function main() {
     [apex, crosbie, clients[1]].map((c) => ({ clientId: c.id, kind: "inbox" as const, title: `Inbox ${today()}`, body: "Quick check-in about next week's offer. Replied." })),
   );
 
-  console.log(`Seeded ${clients.length} demo clients.`);
+  // Made-up expenses for the last 12 months: subscriptions, ad spend, a freelancer, fees, travel.
+  const expenses: ExpenseInput[] = [];
+  const spend: [string, number, string, string | null][] = [
+    ["Canva", 11.99, "CARD_PAYMENT", "5734"],
+    ["Google *GSuite 1media", 46.8, "CARD_PAYMENT", "5734"],
+    ["Slack Technologies", 26.25, "CARD_PAYMENT", "5734"],
+    ["GoHighLevel", 297, "CARD_PAYMENT", "5734"],
+    ["FACEBK *DEMO1234", 850, "CARD_PAYMENT", "7311"],
+    ["Revolut", 25, "FEE", null],
+  ];
+  for (let i = 0; i < 12; i++) {
+    const m = addMonths(now, -i).slice(0, 7);
+    const day = (d: number) => `${m}-${String(d).padStart(2, "0")}`;
+    if (day(1) > today()) continue;
+    spend.forEach(([merchant, amount, type, mcc], j) =>
+      expenses.push({ externalId: `demo:${m}:${j}`, date: day(2 + j * 3), merchant, amount: merchant.startsWith("FACEBK") ? amount + (i % 4) * 120 : amount, currency: "EUR", cardLast4: type === "FEE" ? null : "1234", hint: { type, mcc } }),
+    );
+    expenses.push({ externalId: `demo:${m}:freelancer`, date: day(25), merchant: "Niamh Designs", description: "To Niamh Designs · Ad creatives", amount: 600 + (i % 3) * 150, currency: "EUR", hint: { type: "TRANSFER" } });
+    expenses.push({ externalId: `demo:${m}:savings`, date: day(27), merchant: "EUR Savings", description: "To EUR Savings", amount: 2000, currency: "EUR", hint: { type: "TRANSFER", ownTransfer: true } });
+    if (i % 3 === 1) expenses.push({ externalId: `demo:${m}:travel`, date: day(14), merchant: "Ryanair", amount: 89.98, currency: "EUR", cardLast4: "1234", hint: { type: "CARD_PAYMENT", mcc: "3246" } });
+    if (i % 4 === 0) expenses.push({ externalId: `demo:${m}:lunch`, date: day(18), merchant: "The Hungry Monk", description: "Client lunch", amount: 64.5, currency: "EUR", cardLast4: "1234", hint: { type: "CARD_PAYMENT" } });
+  }
+  expenses.push({ externalId: "demo:usd", date: today(), merchant: "Midjourney Inc", amount: 30, currency: "USD", amountEur: 27.6, cardLast4: "1234", hint: { type: "CARD_PAYMENT", mcc: "5734" } });
+  const seeded = await insertExpenses(expenses, "manual");
+  await db.update(schema.expenses).set({ clientId: apex.id }).where(eq(schema.expenses.merchant, "Niamh Designs"));
+
+  console.log(`Seeded ${clients.length} demo clients and ${seeded.inserted} demo expenses.`);
 }
 
 main()

@@ -8,7 +8,7 @@
 export type Role = "owner" | "team";
 
 export type Permission =
-  | "payments" // see and change Payments, payment history on client pages
+  | "payments" // see and change Payments and Expenses, payment history on client pages
   | "money_stats" // MRR, collected, outstanding, overdue on Home and Dashboard
   | "client_billing" // see and edit retainer, VAT, billing method, Stripe customer
   | "approve_finance" // approve or reject finance / Stripe actions
@@ -30,7 +30,7 @@ export function can(role: Role | null | undefined, permission: Permission): bool
 const FINANCE_AGENTS = new Set(["finance", "payments"]);
 
 /** 1Media OS tools that read or move money. Team members never get these, in any agent. */
-export const MONEY_OS_TOOLS = ["OS_LIST_PAYMENTS", "OS_RECORD_PAYMENT", "OS_GET_RECEIVABLES", "OS_QUEUE_CHASER", "OS_SAVE_CASH_SUMMARY"];
+export const MONEY_OS_TOOLS = ["OS_LIST_PAYMENTS", "OS_RECORD_PAYMENT", "OS_GET_RECEIVABLES", "OS_QUEUE_CHASER", "OS_SAVE_CASH_SUMMARY", "OS_LIST_EXPENSES"];
 
 /** True for a tool a team member may not use: the OS money tools, Stripe, and anything about payments or invoices. */
 export function isMoneyTool(tool: string): boolean {

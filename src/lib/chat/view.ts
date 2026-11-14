@@ -91,6 +91,7 @@ const OS_LABELS: Record<string, string> = {
   OS_LIST_HEALTH: "Looked up client health",
   OS_SAVE_REPORT: "Save a report",
   OS_LIST_REPORTS: "Looked up reports",
+  OS_LIST_EXPENSES: "Looked up expenses",
 };
 
 const TOOLKIT_NAMES: Record<string, string> = {

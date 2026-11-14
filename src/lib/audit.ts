@@ -24,7 +24,15 @@ export type AuditAction =
   | "user.create"
   | "user.update"
   | "user.reset_password"
-  | "user.change_password";
+  | "user.change_password"
+  | "expense.add"
+  | "expense.update"
+  | "expense.import"
+  | "expense.categorise_ai"
+  | "revolut.setup"
+  | "revolut.connect"
+  | "revolut.sync"
+  | "revolut.disconnect";
 
 /** Writes one audit row. Never throws: a failed audit write must not break the action itself. */
 export async function audit(

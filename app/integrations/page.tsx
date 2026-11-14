@@ -4,6 +4,7 @@ import { Badge, Card, Notice, PageHeader, btn, btnGhost, btnSm } from "../_compo
 import { Icon } from "../_components/icons";
 import { SubmitButton } from "../_components/client-bits";
 import { connectApp, disconnectApp } from "./actions";
+import { RevolutCard } from "./revolut-card";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +15,7 @@ const STATUS: Record<AppState["status"], { label: string; tone: string }> = {
   not_connected: { label: "Not connected", tone: "gray" },
 };
 
-export default async function IntegrationsPage({ searchParams }: { searchParams: Promise<{ connected?: string; error?: string }> }) {
+export default async function IntegrationsPage({ searchParams }: { searchParams: Promise<{ connected?: string; error?: string; revolut?: string; detail?: string }> }) {
   await requirePermission("manage_integrations", "manage integrations");
   const sp = await searchParams;
   const ready = composioReady();
@@ -56,6 +57,16 @@ export default async function IntegrationsPage({ searchParams }: { searchParams:
           {sp.error}
         </Notice>
       )}
+      {sp.revolut === "connected" && (
+        <Notice tone="success" title="Revolut is connected" className="mb-6">
+          The first sync (last 90 days) is running now. New expenses show on Expenses; money in waits under Unmatched on Payments.
+        </Notice>
+      )}
+      {sp.revolut === "synced" && (
+        <Notice tone="success" title="Revolut synced" className="mb-6">
+          {sp.detail}
+        </Notice>
+      )}
       {loadError && (
         <Notice tone="error" title="Couldn't load connections" className="mb-6">
           {loadError}
@@ -63,6 +74,12 @@ export default async function IntegrationsPage({ searchParams }: { searchParams:
       )}
 
       <div className="space-y-8">
+        <section>
+          <h2 className="mb-3 text-xs font-semibold tracking-[0.16em] text-muted uppercase">Banking</h2>
+          <div className="max-w-3xl">
+            <RevolutCard />
+          </div>
+        </section>
         {groups.map((g) => (
           <section key={g}>
             <h2 className="mb-3 text-xs font-semibold tracking-[0.16em] text-muted uppercase">{g}</h2>

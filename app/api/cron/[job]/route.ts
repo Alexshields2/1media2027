@@ -5,9 +5,11 @@ import { generateMonth } from "@/lib/billing";
 import { monthStart } from "@/lib/dates";
 import { notify } from "@/lib/slack";
 import { appOrigin, dispatchJobs, enqueueReportJobs, sweepReportJobs } from "@/lib/report-jobs";
+import { runRevolutSync } from "@/lib/revolut/run";
 
 // Vercel Cron calls GET /api/cron/<job> with "Authorization: Bearer $CRON_SECRET".
-// Jobs: any agent name, or "billing" (creates this month's retainer rows; no AI).
+// Jobs: any agent name, "billing" (creates this month's retainer rows; no AI), or "revolut-sync"
+// (pulls Revolut Business transactions into Expenses and unmatched payments; no agent).
 // weekly-report and month-end-report fan out: one job and one function per client
 // (see src/lib/report-jobs.ts), so a slow account can't time out the others.
 
@@ -21,11 +23,14 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ job:
   if (!secret || req.headers.get("authorization") !== `Bearer ${secret}`) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
+  const { job } = await params;
+  // Not an agent, so AGENTS_PAUSED doesn't stop it.
+  if (job === "revolut-sync") return NextResponse.json({ job, ...(await runRevolutSync("cron")) });
+
   if (process.env.AGENTS_PAUSED === "true") {
     return NextResponse.json({ skipped: "AGENTS_PAUSED is true" });
   }
 
-  const { job } = await params;
   const origin = appOrigin(req.nextUrl.origin);
 
   // Every cron also recovers report jobs whose function died, and re-sends any left in the queue.
