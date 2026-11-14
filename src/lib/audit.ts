@@ -8,6 +8,8 @@ export type AuditAction =
   | "approval.approve"
   | "approval.reject"
   | "payment.record"
+  | "payment.unrecord"
+  | "payment.assign"
   | "payment.add"
   | "payment.generate_month"
   | "client.create"

@@ -4,7 +4,7 @@ import { db, schema } from "../db";
 import { config } from "../config";
 import { round2 } from "./billing";
 import { eur, monthStart } from "./dates";
-import { allocate, appendNote, openRows, type Db } from "./reconcile";
+import { appendNote, openRows, type Db } from "./reconcile";
 import { suggestMatches } from "./matching";
 import { notify } from "./slack";
 
@@ -14,6 +14,10 @@ import { notify } from "./slack";
 //   invoice.paid, invoice.payment_succeeded, invoice.updated  money in (full or part payments)
 //   invoice.payment_failed                                     note on the row + Slack
 //   charge.refunded                                            note on the row + Slack (we never issue refunds)
+//
+// Money in is NEVER applied to a payment row here. Each payment is recorded as an incoming payment waiting for
+// the owner (status "unmatched", with the client when the Stripe customer is known and suggested months), and the
+// owner ticks off which month(s) it covers in the payment log. Clients pay ahead and pay late, so only they know.
 //
 // Idempotency: every event ID is stored in stripe_events inside the same transaction as its effects,
 // so a retried event is a no-op. Money is tracked per invoice as a cumulative amount, so overlapping
@@ -131,59 +135,32 @@ async function onInvoicePayment(tx: Db, inv: Stripe.Invoice, created: number): P
     })
     .returning();
 
-  const label = `Stripe invoice ${f.number ?? f.id} paid ${f.paidDate}${part ? " (part payment)" : ""}`;
   if (f.currency !== "EUR") {
-    await tx.update(schema.incomingPayments).set({ notes: `Paid in ${f.currency}: assign by hand.` }).where(eq(schema.incomingPayments.id, incoming.id));
-    return { outcome: `unmatched: ${f.currency} payment`, slack: [`Stripe payment of ${delta} ${f.currency} (invoice ${f.number ?? f.id}) is not in EUR. Assign it on the Payments page.`] };
+    await tx.update(schema.incomingPayments).set({ notes: `Paid in ${f.currency}: check the amount in euro before assigning it.` }).where(eq(schema.incomingPayments.id, incoming.id));
+    return { outcome: `to assign: ${f.currency} payment`, slack: [`Stripe payment of ${delta} ${f.currency} (invoice ${f.number ?? f.id}) is not in EUR. Assign it on the Payments page.`] };
   }
 
-  // 1. Match by Stripe customer ID.
+  // Never applied automatically: clients pay a month or two ahead, or pay back months late, so the owner
+  // decides which month(s) it covers. We only work out who it's from and suggest the likely months.
   const client = await clientByCustomer(tx, f.customerId);
-  if (client) {
-    const rows = await openRows(tx, { clientId: client.id });
-    const rank = (r: (typeof rows)[number]) => (r.stripeInvoiceId === f.id ? 0 : r.period === f.period ? 1 : 2);
-    const ordered = [...rows].sort((a, b) => rank(a) - rank(b) || a.dueDate.localeCompare(b.dueDate));
-    await tx.update(schema.incomingPayments).set({ clientId: client.id }).where(eq(schema.incomingPayments.id, incoming.id));
-    const added = await allocate(tx, { ...incoming, clientId: client.id }, ordered.map((r) => r.id), { method: "stripe", matchedBy: "stripe-customer", note: label });
-    const applied = round2(added.reduce((s, a) => s + a.amount, 0));
-    const left = round2(delta - applied);
-    if (left > 0.005) {
-      await tx
-        .update(schema.incomingPayments)
-        .set({ notes: `${eur(left)} more than ${client.name}'s open rows. Assign it to a row or add a charge.` })
-        .where(eq(schema.incomingPayments.id, incoming.id));
-    }
-    return {
-      outcome: `matched by customer to ${client.name}: ${eur(applied)} applied${left > 0.005 ? `, ${eur(left)} unmatched` : ""}`,
-      slack: [`${client.name} paid ${eur(delta)} via Stripe${part ? " (part payment)" : ""}${left > 0.005 ? `. ${eur(left)} didn't fit any open month: see Unmatched on the Payments page` : ""}.`],
-    };
-  }
-
-  // 2. Match by amount + period, only when exactly one open row fits and its client has no other Stripe customer.
   const all = await openRows(tx);
-  const linked = new Set(
-    (await tx.select({ id: schema.clients.id }).from(schema.clients).where(dsql`${schema.clients.stripeCustomerId} is not null`)).map((c) => c.id),
+  const pool = client ? all.filter((r) => r.clientId === client.id) : all;
+  const suggestions = suggestMatches(
+    { date: f.paidDate, amount: delta, payer: client?.name ?? f.customerName, reference: [f.number, f.customerEmail].filter(Boolean).join(" "), channel: "stripe" },
+    pool,
   );
-  const fits = all.filter((r) => r.period === f.period && Math.abs(r.amountDue - r.amountCollected - delta) <= 0.01 && !linked.has(r.clientId));
-  if (fits.length === 1) {
-    const row = fits[0];
-    await allocate(tx, incoming, [row.id], { method: "stripe", matchedBy: "amount-period", note: `${label}; matched by amount and month` });
-    await tx
-      .update(schema.incomingPayments)
-      .set({ clientId: row.clientId, notes: `Matched by amount and month. Add Stripe customer ${f.customerId ?? "?"} to ${row.clientName} so future payments match by customer.` })
-      .where(eq(schema.incomingPayments.id, incoming.id));
-    return {
-      outcome: `matched by amount+period to ${row.clientName} (row ${row.id})`,
-      slack: [`Stripe payment of ${eur(delta)} from ${f.customerName ?? f.customerId} matched to ${row.clientName} by amount and month. Add Stripe customer ${f.customerId} to the client so future ones match automatically.`],
-    };
-  }
-
-  // 3. Unmatched: suggestions for one-click assignment on the Payments page.
-  const suggestions = suggestMatches({ date: f.paidDate, amount: delta, payer: f.customerName, reference: [f.number, f.customerEmail].filter(Boolean).join(" "), channel: "stripe" }, all);
-  await tx.update(schema.incomingPayments).set({ suggestions }).where(eq(schema.incomingPayments.id, incoming.id));
+  await tx
+    .update(schema.incomingPayments)
+    .set({
+      clientId: client?.id ?? null,
+      suggestions,
+      notes: client ? null : `No client has Stripe customer ${f.customerId ?? "?"}. Pick the client when you assign it (you can save the customer ID on them).`,
+    })
+    .where(eq(schema.incomingPayments.id, incoming.id));
+  const who = client?.name ?? f.customerName ?? f.customerEmail ?? f.customerId ?? "unknown customer";
   return {
-    outcome: `unmatched (${fits.length} rows fit amount+period)`,
-    slack: [`Stripe payment of ${eur(delta)} from ${f.customerName ?? f.customerEmail ?? f.customerId} doesn't match any client. Assign it under Unmatched on the Payments page.`],
+    outcome: `to assign: ${eur(delta)} from ${who}${client ? " (client known by Stripe customer)" : ""}`,
+    slack: [`${who} paid ${eur(delta)} via Stripe${part ? " (part payment)" : ""}. Tick off which month(s) it covers under "Stripe payments to assign" on the Payments page.`],
   };
 }
 

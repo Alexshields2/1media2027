@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { asc, desc, eq } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { paymentState, round2 } from "@/lib/billing";
+import { paymentState, previewMonth, round2, trackingStart } from "@/lib/billing";
 import { addMonths, eur, monthLabel, monthStart, today } from "@/lib/dates";
 import { AGING_BUCKETS, SUGGEST_AT } from "@/lib/matching";
 import { latestCashSummary, receivables } from "@/lib/finance";
@@ -17,11 +17,13 @@ import {
   saveCashSummaryAction,
 } from "../actions";
 import { can } from "@/lib/roles";
-import { Badge, Card, Empty, NoAccess, Notice, PageHeader, Progress, Table, btn, btnGhost, btnLink, btnSm, field, input, td, tdNum } from "../_components/ui";
+import { Badge, Card, Empty, NoAccess, Notice, PageHeader, Progress, Segmented, Table, btn, btnGhost, btnLink, btnSm, field, input, td, tdNum } from "../_components/ui";
 import { ClientLogo } from "../_components/client-logo";
 import { Icon } from "../_components/icons";
-import { SubmitButton } from "../_components/client-bits";
+import { ConfirmSubmitButton, SubmitButton } from "../_components/client-bits";
 import { requireUser } from "@/lib/session";
+import { assignTargets, bankCreditsWaiting, loadPaymentLog } from "@/lib/payment-log";
+import { PaymentLog, StripeToAssign, type ToAssign } from "./payment-log";
 
 export const dynamic = "force-dynamic";
 
@@ -32,13 +34,86 @@ const BUCKET_TONE: Record<string, "bad" | undefined> = { "31-60": "bad", "60+": 
 
 const shortMonth = (period: string) => monthLabel(period).replace(/^(\w{3})\w*/, "$1");
 
-export default async function PaymentsPage({ searchParams }: { searchParams: Promise<{ month?: string; imported?: string; error?: string }> }) {
+type Search = { view?: string; year?: string; month?: string; imported?: string; error?: string };
+
+export default async function PaymentsPage({ searchParams }: { searchParams: Promise<Search> }) {
   const user = await requireUser();
   if (!can(user.role, "payments")) return <NoAccess what="Payments" />;
   const sp = await searchParams;
+  // The payment log is the default; links with ?month= (and the reconcile redirects) still open the month view.
+  const view = sp.view === "list" || sp.view === "month" || sp.view === "log" ? sp.view : sp.month || sp.imported || sp.error ? "month" : "log";
+  if (view === "month") return <MonthView sp={sp} />;
+  return <LogView sp={sp} mode={view === "list" ? "list" : "grid"} />;
+}
+
+function ViewSwitch({ view, year, month }: { view: "log" | "list" | "month"; year: number; month?: string }) {
+  return (
+    <Segmented
+      label="Payments view"
+      items={[
+        { href: `/payments?view=log&year=${year}`, label: "Log", icon: "grid", active: view === "log" },
+        { href: `/payments?view=list&year=${year}`, label: "By month", icon: "list", active: view === "list" },
+        { href: `/payments?view=month${month ? `&month=${month}` : ""}`, label: "Month view", icon: "calendar", active: view === "month" },
+      ]}
+    />
+  );
+}
+
+async function LogView({ sp, mode }: { sp: Search; mode: "grid" | "list" }) {
+  const on = today();
+  const year = /^\d{4}$/.test(sp.year ?? "") ? Number(sp.year) : Number(on.slice(0, 4));
+  const [log, unmatched, targets, bankWaiting] = await Promise.all([loadPaymentLog(year, on), listUnmatched(), assignTargets(on), bankCreditsWaiting()]);
+  const rows = log.lines.flatMap((l) => Object.values(l.cells).filter((r): r is NonNullable<typeof r> => !!r));
+  const clients = [...new Map(log.lines.map((l) => [l.client.id, l.client])).values()];
+  const stripe: ToAssign[] = unmatched
+    .filter((u) => u.source === "stripe")
+    .map((u) => ({
+      id: u.id,
+      receivedDate: u.receivedDate,
+      amount: u.amount,
+      remaining: u.remaining,
+      payer: u.payer,
+      reference: u.reference,
+      description: u.description,
+      notes: u.notes,
+      clientId: u.clientId,
+      stripeCustomerId: u.stripeCustomerId,
+      suggested: u.live
+        .filter((s) => (u.clientId ? s.row.clientId === u.clientId : s.score >= SUGGEST_AT))
+        .map((s) => ({ paymentId: s.paymentId, clientId: s.row.clientId, period: s.row.period, label: s.row.label ?? "Retainer", reasons: s.reasons })),
+    }));
+  const yearNav = (y: number) => `/payments?view=${mode === "grid" ? "log" : "list"}&year=${y}`;
+  return (
+    <>
+      <PageHeader
+        title="Payments"
+        subtitle="Tick off each client's month as it's paid. Stripe payments wait for you to say which month they cover."
+        actions={<ViewSwitch view={mode === "grid" ? "log" : "list"} year={year} />}
+      />
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <Link aria-disabled={!log.years.includes(year - 1)} className={`grid size-10 place-items-center rounded-full border border-line bg-panel text-soft hover:border-brand/50 hover:text-white ${log.years.includes(year - 1) ? "" : "pointer-events-none opacity-40"}`} href={yearNav(year - 1)} aria-label="Previous year">
+          <Icon name="chevronLeft" />
+        </Link>
+        <h2 className="min-w-16 text-center text-lg font-semibold text-white">{year}</h2>
+        <Link aria-disabled={!log.years.includes(year + 1)} className={`grid size-10 place-items-center rounded-full border border-line bg-panel text-soft hover:border-brand/50 hover:text-white ${log.years.includes(year + 1) ? "" : "pointer-events-none opacity-40"}`} href={yearNav(year + 1)} aria-label="Next year">
+          <Icon name="chevronRight" />
+        </Link>
+        {bankWaiting > 0 && (
+          <Link href="/payments?view=month#reconcile" className={`${btnLink} ml-auto`}>
+            {bankWaiting} bank credit{bankWaiting === 1 ? "" : "s"} to match →
+          </Link>
+        )}
+      </div>
+      <StripeToAssign items={stripe} clients={targets} />
+      <PaymentLog mode={mode} year={year} years={log.years} today={on} from={log.from ?? `${year}-01-01`} clients={clients} rows={rows} />
+    </>
+  );
+}
+
+async function MonthView({ sp }: { sp: Search }) {
   const period = monthStart(/^\d{4}-\d{2}$/.test(sp.month ?? "") ? `${sp.month}-01` : today());
   const month = period.slice(0, 7);
-  const [rows, clients, unmatched, open, rec, summary, recent] = await Promise.all([
+  const [rows, clients, unmatched, open, rec, summary, recent, start, preview] = await Promise.all([
     db
       .select({ p: schema.payments, client: schema.clients })
       .from(schema.payments)
@@ -57,7 +132,13 @@ export default async function PaymentsPage({ searchParams }: { searchParams: Pro
       .where(eq(schema.incomingPayments.status, "matched"))
       .orderBy(desc(schema.incomingPayments.decidedAt))
       .limit(6),
+    trackingStart(),
+    previewMonth(period),
   ]);
+  // No generating rows before payment tracking started (Jan 2026, or the first month with real payments),
+  // and always say how many rows and how much before creating them.
+  const canGenerate = period >= start && preview.count > 0;
+  const generateConfirm = `Create ${preview.count} unpaid retainer row${preview.count === 1 ? "" : "s"} for ${monthLabel(period)}, totalling ${eur(preview.total)}?`;
   const due = round2(rows.reduce((s, r) => s + r.p.amountDue, 0));
   const collected = round2(rows.reduce((s, r) => s + r.p.amountCollected, 0));
   const rowLabel = (r: (typeof open)[number]) => `${r.clientName} · ${shortMonth(r.period)}${r.label && r.label !== "Retainer" ? ` ${r.label}` : ""} · ${eur(round2(r.amountDue - r.amountCollected))}`;
@@ -75,12 +156,17 @@ export default async function PaymentsPage({ searchParams }: { searchParams: Pro
         title="Payments"
         subtitle="Retainers per month, money in from Stripe and the bank, and who owes what."
         actions={
-          <form action={generateMonthAction}>
-            <input type="hidden" name="month" value={month} />
-            <SubmitButton className={btnGhost}>
-              <Icon name="plus" /> Generate {monthLabel(period).split(" ")[0]} rows
-            </SubmitButton>
-          </form>
+          <div className="flex flex-wrap items-center gap-2">
+            <ViewSwitch view="month" year={Number(month.slice(0, 4))} month={month} />
+            {canGenerate && (
+              <form action={generateMonthAction}>
+                <input type="hidden" name="month" value={month} />
+                <ConfirmSubmitButton className={btnGhost} confirm={generateConfirm}>
+                  <Icon name="plus" /> Generate {monthLabel(period).split(" ")[0]} rows
+                </ConfirmSubmitButton>
+              </form>
+            )}
+          </div>
         }
       />
 
@@ -93,15 +179,15 @@ export default async function PaymentsPage({ searchParams }: { searchParams: Pro
         <div className="relative p-5 sm:p-7">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2">
-              <Link className="grid size-9 place-items-center rounded-full border border-line bg-canvas/60 text-soft hover:border-brand/50 hover:text-white" href={`/payments?month=${addMonths(period, -1).slice(0, 7)}`} aria-label="Previous month">
+              <Link className="grid size-9 place-items-center rounded-full border border-line bg-canvas/60 text-soft hover:border-brand/50 hover:text-white" href={`/payments?view=month&month=${addMonths(period, -1).slice(0, 7)}`} aria-label="Previous month">
                 <Icon name="chevronLeft" />
               </Link>
               <h2 className="min-w-40 text-center text-lg font-semibold text-white">{monthLabel(period)}</h2>
-              <Link className="grid size-9 place-items-center rounded-full border border-line bg-canvas/60 text-soft hover:border-brand/50 hover:text-white" href={`/payments?month=${addMonths(period, 1).slice(0, 7)}`} aria-label="Next month">
+              <Link className="grid size-9 place-items-center rounded-full border border-line bg-canvas/60 text-soft hover:border-brand/50 hover:text-white" href={`/payments?view=month&month=${addMonths(period, 1).slice(0, 7)}`} aria-label="Next month">
                 <Icon name="chevronRight" />
               </Link>
               {period !== monthStart() && (
-                <Link href="/payments" className={`${btnLink} ml-1`}>
+                <Link href="/payments?view=month" className={`${btnLink} ml-1`}>
                   This month
                 </Link>
               )}
@@ -133,7 +219,7 @@ export default async function PaymentsPage({ searchParams }: { searchParams: Pro
         </div>
       </section>
 
-      <Card flush title={`${monthLabel(period)} rows`} description="Record what arrived by hand; Stripe payments mark themselves paid.">
+      <Card flush title={`${monthLabel(period)} rows`} description="Record what arrived by hand. Stripe payments wait in the log until you assign them to a month.">
         {rows.length ? (
           <Table head={["Client", "Line", { label: "Due", align: "right" }, { label: "Collected", align: "right" }, "Status", "Record payment"]} minWidth={860}>
             {rows.map(({ p, client }) => {
@@ -190,13 +276,17 @@ export default async function PaymentsPage({ searchParams }: { searchParams: Pro
             icon="euro"
             title={`No rows for ${monthLabel(period)} yet`}
             action={
-              <form action={generateMonthAction}>
-                <input type="hidden" name="month" value={month} />
-                <SubmitButton className={btn}>Generate {monthLabel(period).split(" ")[0]} rows</SubmitButton>
-              </form>
+              canGenerate ? (
+                <form action={generateMonthAction}>
+                  <input type="hidden" name="month" value={month} />
+                  <ConfirmSubmitButton className={btn} confirm={generateConfirm}>
+                    Generate {monthLabel(period).split(" ")[0]} rows
+                  </ConfirmSubmitButton>
+                </form>
+              ) : undefined
             }
           >
-            Creates one row per active client from their retainer.
+            {period < start ? `Payments are tracked from ${monthLabel(start)}.` : canGenerate ? "Creates one row per active client from their retainer." : "No active client has a retainer to bill."}
           </Empty>
         )}
       </Card>
@@ -259,7 +349,7 @@ export default async function PaymentsPage({ searchParams }: { searchParams: Pro
       <div id="reconcile" className="mt-6 scroll-mt-24">
         <Card
           title={`Unmatched payments${unmatched.length ? ` (${unmatched.length})` : ""}`}
-          description="Stripe payments that didn’t match a client, and bank credits waiting for you to confirm"
+          description="Stripe payments and bank credits waiting for you to say which month they cover"
         >
           <form action={importBankCsvAction} className="mb-5 flex flex-wrap items-center gap-3 rounded-xl border border-dashed border-line-strong bg-canvas/40 p-4">
             <input type="hidden" name="month" value={month} />
@@ -363,7 +453,7 @@ export default async function PaymentsPage({ searchParams }: { searchParams: Pro
             </Table>
           ) : (
             <Empty icon="check" title="Nothing to match" compact>
-              Every Stripe payment found its client, and no bank credits are waiting.
+              No Stripe payments or bank credits are waiting.
             </Empty>
           )}
 

@@ -19,15 +19,38 @@ describe("money loop (database)", { skip: skipReason }, () => {
 
   const ev = (name: string) => stripeFixture<Stripe.Event>(name);
 
-  test("Stripe invoice.paid: matched by customer, row paid, idempotent on retry and on overlapping events", async () => {
+  /** A fixture event with fresh event and invoice IDs, so it doesn't collide with the other tests. */
+  const fresh = (name: string, tag: string, patch: Partial<Stripe.Invoice> = {}) => {
+    const e = structuredClone(ev(name));
+    e.id = `evt_${tag}`;
+    Object.assign(e.data.object as Stripe.Invoice, { id: `in_${tag}`, ...patch });
+    return e;
+  };
+
+  test("a Stripe event never changes payment rows: every payment waits for the owner", async () => {
+    const before = await m.paymentSnapshot();
+    const known = await m.handleStripeEvent(fresh("invoice.paid", "NeverKnown"));
+    const unknown = await m.handleStripeEvent(fresh("invoice.paid.unknown-customer", "NeverUnknown"));
+    const mystery = await m.handleStripeEvent(fresh("invoice.paid.unmatched", "NeverMystery"));
+    const partial = await m.handleStripeEvent(fresh("invoice.updated.partial", "NeverPartial", { customer: "cus_DemoPaving" }));
+    for (const r of [known, unknown, mystery, partial]) assert.match(r.outcome, /^to assign/);
+    assert.deepEqual(await m.paymentSnapshot(), before, "no payment row was touched");
+
+    const [k] = await m.incoming({ stripeInvoiceId: "in_NeverKnown" });
+    assert.deepEqual([k.status, k.allocated, k.allocations, k.matchedBy], ["unmatched", 0, [], null]);
+    assert.equal(k.clientId, (await m.client("Demo Paving Co")).id, "the client is known from the Stripe customer");
+    // Suggested, not applied: Paving's November is the likely month.
+    assert.equal(k.suggestions[0]?.paymentId, (await m.row("Demo Paving Co", "2026-11-01")).id);
+    const [u] = await m.incoming({ stripeInvoiceId: "in_NeverUnknown" });
+    assert.deepEqual([u.status, u.allocated, u.clientId], ["unmatched", 0, null]);
+    assert.match(u.notes ?? "", /No client has Stripe customer cus_NewGarden/);
+    await m.deleteIncoming(["in_NeverKnown", "in_NeverUnknown", "in_NeverMystery", "in_NeverPartial"]);
+  });
+
+  test("Stripe invoice.paid: recorded once (retries, overlapping events), then the owner ticks the month", async () => {
     const r1 = await m.handleStripeEvent(ev("invoice.paid"));
-    assert.match(r1.outcome, /matched by customer to Demo Paving Co/);
-    const row = await m.row("Demo Paving Co", "2026-11-01");
-    assert.equal(row.amountCollected, 1845);
-    assert.equal(row.paidDate, "2026-11-05");
-    assert.equal(row.method, "stripe");
-    assert.equal(row.stripeInvoiceId, "in_DemoPavingNov");
-    assert.match(row.notes ?? "", /Stripe invoice 1M-0042 paid 2026-11-05/);
+    assert.match(r1.outcome, /to assign: €1,845 from Demo Paving Co/);
+    assert.equal((await m.row("Demo Paving Co", "2026-11-01")).amountCollected, 0, "not applied automatically");
 
     // Stripe retries the same event.
     const r2 = await m.handleStripeEvent(ev("invoice.paid"));
@@ -35,58 +58,72 @@ describe("money loop (database)", { skip: skipReason }, () => {
     // A different event for the same invoice (invoice.payment_succeeded) adds nothing.
     const r3 = await m.handleStripeEvent(ev("invoice.payment_succeeded"));
     assert.match(r3.outcome, /already recorded/);
-    assert.equal((await m.row("Demo Paving Co", "2026-11-01")).amountCollected, 1845);
-    assert.equal((await m.incoming({ stripeInvoiceId: "in_DemoPavingNov" })).length, 1);
+    const inc = await m.incoming({ stripeInvoiceId: "in_DemoPavingNov" });
+    assert.equal(inc.length, 1);
+
+    // The owner says it's for November.
+    const nov = await m.row("Demo Paving Co", "2026-11-01");
+    await m.assignIncomingParts(inc[0].id, [{ paymentId: nov.id }]);
+    const row = await m.row("Demo Paving Co", "2026-11-01");
+    assert.deepEqual([row.amountCollected, row.paidDate, row.method, row.stripeInvoiceId], [1845, "2026-11-05", "stripe", "in_DemoPavingNov"]);
+    assert.match(row.notes ?? "", /Stripe invoice 1M-0042 of €1,845 paid 2026-11-05 \(Demo Paving Co\), assigned by owner/);
+    assert.equal((await m.incomingById(inc[0].id)).status, "matched");
     // October was already paid and stays untouched.
     assert.equal((await m.row("Demo Paving Co", "2026-10-01")).amountCollected, 1845);
   });
 
-  test("concurrent deliveries of the same event apply the money once", async () => {
+  test("concurrent deliveries of the same event record the payment once", async () => {
     const e = { ...ev("invoice.paid.after-partial"), id: "evt_concurrent_test" } as Stripe.Event;
     // Use a fresh invoice so this test doesn't depend on order: same payload, new invoice ID.
     (e.data.object as Stripe.Invoice).id = "in_ConcurrentAttic";
     (e.data.object as Stripe.Invoice).customer = "cus_Concurrent";
     await m.setStripeCustomer("Demo Bathrooms", "cus_Concurrent");
+    const before = await m.paymentSnapshot();
     const results = await Promise.all([m.handleStripeEvent(e), m.handleStripeEvent(e), m.handleStripeEvent(e)]);
     assert.equal(results.filter((r) => !r.duplicate).length, 1);
     const inc = await m.incoming({ stripeInvoiceId: "in_ConcurrentAttic" });
     assert.equal(inc.length, 1);
-    // Bathrooms owes 406.50 x 2 (Oct, Nov): 813 applied, the rest stays unmatched for the owner.
-    assert.equal(inc[0].allocated, 813);
-    assert.equal(inc[0].status, "unmatched");
-    assert.match(inc[0].notes ?? "", /more than Demo Bathrooms's open rows/);
+    assert.deepEqual([inc[0].amount, inc[0].allocated, inc[0].status], [3690, 0, "unmatched"]);
+    assert.equal(inc[0].clientId, (await m.client("Demo Bathrooms")).id);
+    assert.deepEqual(await m.paymentSnapshot(), before);
     await m.resetClient("Demo Bathrooms");
   });
 
-  test("partial payment then full payment: each applies only the new money", async () => {
+  test("partial payment then full payment: each recorded once, the owner puts both on the month", async () => {
     await m.setStripeCustomer("Demo Attic Conversions", "cus_DemoAttic");
     const p = await m.handleStripeEvent(ev("invoice.updated.partial"));
-    assert.match(p.outcome, /1,000/);
+    assert.match(p.outcome, /€1,000/);
+    await m.handleStripeEvent(ev("invoice.paid.after-partial"));
+    assert.equal((await m.row("Demo Attic Conversions", "2026-11-01")).amountCollected, 0);
+    const inc = (await m.incoming({ stripeInvoiceId: "in_DemoAtticNov" })).sort((a, b) => a.amount - b.amount);
+    assert.deepEqual(inc.map((i) => i.amount), [1000, 2690]);
+
+    const nov = await m.row("Demo Attic Conversions", "2026-11-01");
+    await m.assignIncomingParts(inc[0].id, [{ paymentId: nov.id }]);
     let row = await m.row("Demo Attic Conversions", "2026-11-01");
     assert.equal(row.amountCollected, 1000);
     assert.equal(m.paymentState(row, "2026-11-11"), "part");
-    assert.match(row.notes ?? "", /part payment/);
-
-    await m.handleStripeEvent(ev("invoice.paid.after-partial"));
+    await m.assignIncomingParts(inc[1].id, [{ paymentId: nov.id }]);
     row = await m.row("Demo Attic Conversions", "2026-11-01");
-    assert.equal(row.amountCollected, 3690);
-    assert.equal(row.paidDate, "2026-11-08");
-    const inc = await m.incoming({ stripeInvoiceId: "in_DemoAtticNov" });
-    assert.deepEqual(inc.map((i) => i.amount).sort((a, b) => a - b), [1000, 2690]);
+    assert.deepEqual([row.amountCollected, row.paidDate], [3690, "2026-11-08"]);
   });
 
-  test("unknown customer: matched by amount + month when exactly one row fits", async () => {
+  test("unknown customer: suggested by amount and month, never applied; the owner assigns and links it", async () => {
     const r = await m.handleStripeEvent(ev("invoice.paid.unknown-customer"));
-    assert.match(r.outcome, /amount\+period to Demo Garden Rooms/);
+    assert.match(r.outcome, /^to assign/);
+    const garden = await m.row("Demo Garden Rooms", "2026-11-01");
+    assert.equal(garden.amountCollected, 0);
+    const item = (await m.listUnmatched()).find((u) => u.stripeInvoiceId === "in_NewGardenNov")!;
+    assert.equal(item.live[0].paymentId, garden.id);
+    assert.ok(item.live[0].score >= m.SUGGEST_AT);
+    await m.assignIncomingParts(item.id, [{ paymentId: garden.id }], { linkStripeCustomer: true });
     assert.equal((await m.row("Demo Garden Rooms", "2026-11-01")).amountCollected, 1107);
-    const [inc] = await m.incoming({ stripeInvoiceId: "in_NewGardenNov" });
-    assert.equal(inc.matchedBy, "amount-period");
-    assert.match(inc.notes ?? "", /Add Stripe customer cus_NewGarden/);
+    assert.equal((await m.client("Demo Garden Rooms")).stripeCustomerId, "cus_NewGarden");
   });
 
   test("no match lands in Unmatched; one-click assignment applies it and links the customer", async () => {
     const r = await m.handleStripeEvent(ev("invoice.paid.unmatched"));
-    assert.match(r.outcome, /unmatched/);
+    assert.match(r.outcome, /to assign/);
     const list = await m.listUnmatched();
     const item = list.find((u) => u.stripeInvoiceId === "in_MysteryNov");
     assert.ok(item);
@@ -114,6 +151,56 @@ describe("money loop (database)", { skip: skipReason }, () => {
     // Retried refund event doesn't add a second note.
     await m.handleStripeEvent(ev("charge.refunded"));
     assert.equal(((await m.row("Demo Paving Co", "2026-11-01")).notes ?? "").match(/Stripe refund/g)?.length, 1);
+  });
+
+  test("assigning a Stripe payment to a chosen month ticks that month (paid ahead)", async () => {
+    // Paving pays again in November: it's for December, which only the owner knows.
+    const r = await m.handleStripeEvent(fresh("invoice.paid", "PavingAhead"));
+    assert.match(r.outcome, /^to assign/);
+    const [inc] = await m.incoming({ stripeInvoiceId: "in_PavingAhead" });
+    const dec = await m.row("Demo Paving Co", "2026-12-01");
+    assert.equal(dec.amountCollected, 0);
+    await m.assignIncomingParts(inc.id, [{ paymentId: dec.id }]);
+    const after = await m.row("Demo Paving Co", "2026-12-01");
+    assert.deepEqual([after.amountCollected, after.paidDate, after.method], [1845, "2026-11-05", "stripe"]);
+    assert.equal(m.paymentState(after, "2026-11-11"), "paid");
+    assert.equal((await m.row("Demo Paving Co", "2026-11-01")).amountCollected, 1845, "November untouched");
+    const done = await m.incomingById(inc.id);
+    assert.deepEqual([done.status, done.matchedBy, done.allocations], ["matched", "owner", [{ paymentId: dec.id, amount: 1845 }]]);
+  });
+
+  test("a Stripe payment split across two months ticks both", async () => {
+    // Demo Windows (€615 a month) pays October and November late, in one go.
+    const r = await m.handleStripeEvent(fresh("invoice.paid.unmatched", "WindowsTwoMonths", { customer: "cus_DemoWindows", customer_name: "Demo Windows", amount_paid: 123000, amount_due: 123000 }));
+    assert.match(r.outcome, /^to assign: €1,230/);
+    const [inc] = await m.incoming({ stripeInvoiceId: "in_WindowsTwoMonths" });
+    const oct = await m.row("Demo Windows", "2026-10-01");
+    const nov = await m.row("Demo Windows", "2026-11-01");
+
+    // Asking for more than a month owes fails and changes nothing.
+    await assert.rejects(m.assignIncomingParts(inc.id, [{ paymentId: oct.id, amount: 1000 }, { paymentId: nov.id, amount: 230 }]), /only owes €615/);
+    assert.equal((await m.row("Demo Windows", "2026-10-01")).amountCollected, 0);
+    await assert.rejects(m.assignIncomingParts(inc.id, [{ paymentId: oct.id, amount: 615 }, { paymentId: nov.id, amount: 700 }]), /only €1,230 of this payment is left/);
+
+    await m.assignIncomingParts(inc.id, [{ paymentId: oct.id, amount: 615 }, { paymentId: nov.id, amount: 615 }], { linkStripeCustomer: true });
+    for (const month of ["2026-10-01", "2026-11-01"]) {
+      const row = await m.row("Demo Windows", month);
+      assert.deepEqual([row.amountCollected, row.paidDate, row.method], [615, "2026-11-07", "stripe"], month);
+    }
+    const done = await m.incomingById(inc.id);
+    assert.equal(done.status, "matched");
+    assert.equal(done.allocations.length, 2);
+    assert.equal((await m.client("Demo Windows")).stripeCustomerId, "cus_DemoWindows");
+  });
+
+  test("assigning to a month with no row yet creates it from the retainer", async () => {
+    const r = await m.handleStripeEvent(fresh("invoice.paid.unmatched", "WindowsDec", { customer: "cus_DemoWindows" }));
+    assert.match(r.outcome, /Demo Windows/);
+    const [inc] = await m.incoming({ stripeInvoiceId: "in_WindowsDec" });
+    const windows = await m.client("Demo Windows");
+    await m.assignIncomingParts(inc.id, [{ clientId: windows.id, period: "2026-12-01" }]);
+    const dec = await m.row("Demo Windows", "2026-12-01");
+    assert.deepEqual([dec.label, dec.amountDue, dec.amountCollected, dec.dueDate], ["Retainer", 615, 615, "2026-12-01"]);
   });
 
   test("bank CSVs: credits imported with suggestions, nothing applied until the owner confirms", async () => {

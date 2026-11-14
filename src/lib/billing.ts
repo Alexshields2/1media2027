@@ -25,6 +25,33 @@ export function paymentState(p: Pick<Payment, "amountDue" | "amountCollected" | 
   return "upcoming";
 }
 
+/** Payment tracking started in January 2026; used when there is no real payment history yet. */
+export const TRACKING_START = "2026-01-01";
+
+/**
+ * The first month with real payment data: money collected or imported from Notion. Rows that were only generated
+ * (never paid, never imported) don't count, so a stray "Generate rows" click for an old month can't move it earlier.
+ */
+export async function trackingStart(): Promise<string> {
+  const [r] = await db
+    .select({ min: dsql<string | null>`min(${schema.payments.period})::text` })
+    .from(schema.payments)
+    .where(dsql`${schema.payments.amountCollected} > 0 or ${schema.payments.notionPageId} is not null`);
+  return r?.min ? monthStart(r.min) : TRACKING_START;
+}
+
+/** The rows generateMonth would create for a month: how many and their total. */
+export async function previewMonth(period: string = monthStart()): Promise<{ count: number; total: number }> {
+  const p = monthStart(period);
+  const [active, existing] = await Promise.all([
+    db.select().from(schema.clients).where(inArray(schema.clients.status, ["active", "onboarding"])),
+    db.select({ clientId: schema.payments.clientId }).from(schema.payments).where(and(eq(schema.payments.period, p), eq(schema.payments.label, "Retainer"))),
+  ]);
+  const has = new Set(existing.map((e) => e.clientId));
+  const todo = active.filter((c) => c.retainerExVat > 0 && !has.has(c.id));
+  return { count: todo.length, total: round2(todo.reduce((s, c) => s + amountDue(c), 0)) };
+}
+
 /**
  * Creates the month's retainer row for every active client that doesn't have one yet.
  * Safe to run repeatedly. Returns how many rows were created.

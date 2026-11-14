@@ -253,8 +253,9 @@ export const approvals = pgTable(
 
 /**
  * Money that arrived (a Stripe invoice payment or a bank credit from a CSV upload), before and after
- * it is matched to payment rows. Stripe payments matched by customer are applied automatically;
- * bank credits only ever get suggestions, and the owner confirms them on the Payments page.
+ * it is matched to payment rows. Nothing is ever applied automatically: Stripe payments and bank credits get
+ * suggestions, and the owner decides which month(s) each one covers on the Payments page.
+ * (matched_by "stripe-customer" / "amount-period" only appear on rows from before that rule.)
  */
 export const incomingPayments = pgTable(
   "incoming_payments",

@@ -16,7 +16,7 @@ export function integrationStatus(env: Env = process.env): IntegrationStatus[] {
   return [
     check("Anthropic", "Agents and Jarvis think with Claude", ["ANTHROPIC_API_KEY"]),
     check("Composio", "Gmail, Calendar, Drive, Meta Ads, GHL, Stripe and Slack tools for agents", ["COMPOSIO_API_KEY"]),
-    check("Stripe", "Stripe payments are recorded automatically", ["STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET"]),
+    check("Stripe", "Stripe payments arrive on the Payments page for you to assign", ["STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET"]),
     check("Slack", "Agent summaries and approval alerts", ["SLACK_WEBHOOK_URL"]),
     check("Notion", "Import clients and payment history (npm run import:notion)", ["NOTION_TOKEN"]),
   ];

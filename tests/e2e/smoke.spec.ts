@@ -71,6 +71,50 @@ test.describe("signed in", () => {
     });
   }
 
+  test("payment log: tick a month paid, untick it, and switch views", async ({ page }) => {
+    const errors = collectErrors(page);
+    await page.goto("/payments");
+    const grid = page.getByTestId("payment-grid");
+    await expect(grid).toBeVisible();
+    // The first unpaid, past-due box in the grid.
+    const box = grid.locator('button[role=checkbox][aria-checked=false][aria-label$="overdue"]').first();
+    const name = (await box.getAttribute("aria-label"))!.replace(/: overdue$/, "");
+    await box.click();
+    const ticked = grid.getByRole("checkbox", { name: `${name}: paid` });
+    await expect(ticked).toHaveAttribute("aria-checked", "true");
+    await page.reload();
+    await expect(grid.getByRole("checkbox", { name: `${name}: paid` })).toBeVisible();
+    // Untick asks first.
+    page.once("dialog", (d) => d.accept());
+    await grid.getByRole("checkbox", { name: `${name}: paid` }).click();
+    await expect(grid.getByRole("checkbox", { name: `${name}: overdue` })).toBeVisible();
+
+    await page.getByRole("link", { name: "By month" }).click();
+    await expect(page).toHaveURL(/view=list/);
+    await expect(page.getByRole("columnheader", { name: "Amount due" }).first()).toBeVisible();
+    await page.getByRole("link", { name: "Month view" }).click();
+    await expect(page.getByText("Overdue by age")).toBeVisible();
+    expect(errors).toEqual([]);
+  });
+
+  test("generate month rows: hidden before tracking started, and asks with the count and total first", async ({ page }) => {
+    await page.goto("/payments?view=month&month=2025-06");
+    await expect(page.getByRole("heading", { level: 1, name: "Payments" })).toBeVisible();
+    await expect(page.getByRole("button", { name: /Generate .* rows/ })).toHaveCount(0);
+
+    const d = new Date();
+    const next = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 2, 1)).toISOString().slice(0, 7); // a month with no rows yet
+    await page.goto(`/payments?view=month&month=${next}`);
+    let message = "";
+    page.once("dialog", (dlg) => {
+      message = dlg.message();
+      dlg.dismiss();
+    });
+    await page.getByRole("button", { name: /Generate .* rows/ }).first().click();
+    await expect.poll(() => message).toMatch(/^Create \d+ unpaid retainer rows? for .+, totalling €/);
+    await expect(page.getByText(/No rows for/)).toBeVisible();
+  });
+
   test("chat: send a message and see the reply (or the missing-key notice) stream in", async ({ page }) => {
     const errors = collectErrors(page);
     await page.goto("/chat/jarvis");
