@@ -18,16 +18,15 @@ export const APPS: AppDef[] = [
   {
     slug: "metaads",
     name: "Meta Ads",
-    use: "Spend, leads, CPL and creative performance",
+    use: "Spend, leads, CPL and creative performance (connects with a Meta System User token)",
     group: "Ads & CRM",
-    manual: "Composio has no ready-made login for Meta Ads: it needs your own Meta developer app. Ask the CTO chat to set it up.",
   },
   {
     slug: "highlevel",
     name: "GoHighLevel",
     use: "Contacts, pipelines and whether leads get called",
     group: "Ads & CRM",
-    manual: "GoHighLevel connects with a Private Integration token (GHL → Settings → Private Integrations). Ask the CTO chat for the secure form.",
+    manual: "GoHighLevel connects through your own GHL Marketplace app (client ID + secret entered in Composio → Auth Configs). Ask the CTO chat for the steps.",
   },
   { slug: "stripe", name: "Stripe", use: "Invoices and payment status", group: "Money" },
   { slug: "slack", name: "Slack", use: "Post summaries, alerts and approvals", group: "Messaging" },
