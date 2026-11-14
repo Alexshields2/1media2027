@@ -8,6 +8,8 @@ import { queueChaser, receivables, saveCashSummary } from "./finance";
 import { listUnmatched } from "./reconcile";
 import { deriveMetrics, periodFor } from "./report-metrics";
 import { scoreAndSaveHealth } from "./health";
+import { listExpenses, monthSummary } from "./expenses";
+import { categoryLabel, CATEGORY_KEYS } from "./expense-rules";
 
 // Tools that let agents read and write the 1Media OS database.
 // Names start with OS_ so the guardrails treat them as internal.
@@ -109,6 +111,66 @@ const tools: Record<string, OsTool> = {
     run: async (i) => {
       await recordPayment(i.payment_id, { amount: i.amount, paidDate: i.paid_date, method: i.method, note: i.note, stripeInvoiceId: i.stripe_invoice_id });
       return { ok: true };
+    },
+  },
+
+  OS_LIST_EXPENSES: {
+    def: {
+      name: "OS_LIST_EXPENSES",
+      description:
+        "Read-only. Business expenses (money out: Revolut card payments, transfers and fees, CSV imports and manual entries) with category, VAT and the client it is rechargeable to. " +
+        "With month (YYYY-MM) it also returns that month's total and totals by category in euro. Transfers between the agency's own accounts are listed but never counted in totals. " +
+        "category=none returns uncategorised expenses.",
+      input_schema: {
+        type: "object",
+        properties: {
+          month: { type: "string", description: "YYYY-MM. Defaults to this month unless from/to are given." },
+          from: { type: "string", description: "YYYY-MM-DD, inclusive." },
+          to: { type: "string", description: "YYYY-MM-DD, exclusive." },
+          category: { type: "string", enum: [...CATEGORY_KEYS, "none"] },
+          client_id: { type: "integer", description: "Only expenses rechargeable to this client." },
+          search: { type: "string", description: "Text in the merchant, description or notes." },
+          limit: { type: "integer", description: "Max rows (default 100, max 500)." },
+        },
+      },
+    },
+    input: z.object({
+      month: z.string().regex(/^\d{4}-\d{2}$/).optional(),
+      from: isoDate.optional(),
+      to: isoDate.optional(),
+      category: z.enum(["none", ...CATEGORY_KEYS]).optional(),
+      client_id: id.optional(),
+      search: z.string().max(100).optional(),
+      limit: z.number().int().min(1).max(500).optional(),
+    }),
+    run: async (i) => {
+      const month = i.month ?? (i.from || i.to ? undefined : today().slice(0, 7));
+      const rows = await listExpenses({ month, from: i.from, to: i.to, category: i.category, clientId: i.client_id, q: i.search, limit: i.limit ?? 100 });
+      const summary = month ? await monthSummary(month) : null;
+      return {
+        summary: summary && {
+          month: summary.month,
+          total_eur: summary.total,
+          count: summary.count,
+          uncategorised: summary.uncategorised,
+          rechargeable_eur: summary.rechargeable,
+          by_category: summary.byCategory.map((c) => ({ category: categoryLabel(c.category), key: c.category, total_eur: c.total, count: c.count, excluded_from_total: c.category === "transfers" })),
+        },
+        expenses: rows.map((e) => ({
+          id: e.id,
+          date: e.date,
+          merchant: e.merchant,
+          description: e.description,
+          amount: e.amount,
+          currency: e.currency,
+          amount_eur: e.amountEur,
+          category: e.category,
+          vat: e.vatAmount,
+          client: e.client,
+          source: e.source,
+          notes: e.notes,
+        })),
+      };
     },
   },
 

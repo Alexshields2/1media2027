@@ -312,6 +312,95 @@ export const cashSummaries = pgTable("cash_summaries", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+// ---------- expenses (money out) ----------
+
+/**
+ * Money that left the business: Revolut Business card payments, transfers and fees (synced by the
+ * Revolut API or imported from a statement CSV) and expenses added by hand. amount is always positive.
+ * external_id dedupes re-imports and re-syncs ("revolut:<transaction id>" for both the API and a
+ * Revolut CSV, so the two never double count).
+ */
+export const expenses = pgTable(
+  "expenses",
+  {
+    id: serial("id").primaryKey(),
+    date: date("date").notNull(),
+    merchant: text("merchant").notNull(),
+    /** Normalised merchant used for category memory (src/lib/expenses.ts merchantKey). */
+    merchantKey: text("merchant_key").notNull(),
+    description: text("description"),
+    amount: money("amount").notNull(),
+    currency: text("currency").notNull().default("EUR"),
+    /** Amount in euro (null when paid in another currency and the euro value isn't known). */
+    amountEur: money("amount_eur"),
+    /** A key from EXPENSE_CATEGORIES; null = not categorised yet. */
+    category: text("category"),
+    /** How the category was set: a merchant rule the owner made, a built-in rule, Claude, or the owner on this row. */
+    categorySource: text("category_source", { enum: ["owner", "memory", "rule", "ai"] }),
+    vatAmount: money("vat_amount"),
+    /** Rechargeable to this client. */
+    clientId: integer("client_id").references(() => clients.id, { onDelete: "set null" }),
+    source: text("source", { enum: ["revolut", "csv", "manual"] }).notNull(),
+    externalId: text("external_id").notNull(),
+    revolutAccountId: text("revolut_account_id"),
+    cardLast4: text("card_last4"),
+    receiptUrl: text("receipt_url"),
+    notes: text("notes"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("expenses_source_external").on(t.source, t.externalId),
+    index("expenses_external").on(t.externalId),
+    index("expenses_date").on(t.date),
+    index("expenses_merchant_key").on(t.merchantKey),
+  ],
+);
+
+/** Category memory: once the owner recategorises a merchant, its future expenses follow. */
+export const expenseMerchantRules = pgTable("expense_merchant_rules", {
+  merchantKey: text("merchant_key").primaryKey(),
+  category: text("category").notNull(),
+  updatedBy: integer("updated_by").references(() => users.id, { onDelete: "set null" }),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/**
+ * Small encrypted secrets (Revolut private key, refresh and access tokens). AES-256-GCM with a key
+ * derived from AUTH_SECRET (src/lib/secrets.ts). Never returned by any route or shown in the UI.
+ */
+export const secrets = pgTable("secrets", {
+  name: text("name").primaryKey(),
+  ciphertext: text("ciphertext").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** The one Revolut Business API connection (row id 1). Holds no secrets: those live in `secrets`. */
+export const revolutConnection = pgTable("revolut_connection", {
+  id: integer("id").primaryKey().default(1),
+  /** Public X.509 certificate the owner uploads to Revolut (not secret). */
+  certificatePem: text("certificate_pem"),
+  /** Client ID Revolut gives back after the certificate is uploaded (not secret). */
+  clientId: text("client_id"),
+  /** Redirect URI used when authorising; its host is the JWT issuer. */
+  redirectUri: text("redirect_uri"),
+  /** CSRF state for the consent round trip. */
+  oauthState: text("oauth_state"),
+  connectedAt: timestamp("connected_at", { withTimezone: true }),
+  accessTokenExpiresAt: timestamp("access_token_expires_at", { withTimezone: true }),
+  refreshTokenExpiresAt: timestamp("refresh_token_expires_at", { withTimezone: true }),
+  /** Set when the refresh token stops working: the owner must authorise again. */
+  needsReauthAt: timestamp("needs_reauth_at", { withTimezone: true }),
+  /** Revolut accounts seen at the last sync (id, name, currency), so own-account transfers are skipped. */
+  accounts: jsonb("accounts").$type<{ id: string; name: string; currency: string }[]>().notNull().default([]),
+  /** created_at of the newest transaction synced; the next sync starts a few days before it. */
+  syncedThrough: timestamp("synced_through", { withTimezone: true }),
+  lastSyncAt: timestamp("last_sync_at", { withTimezone: true }),
+  lastSyncResult: jsonb("last_sync_result").$type<Record<string, unknown>>(),
+  lastError: text("last_error"),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export interface Allocation {
   paymentId: number;
   amount: number;
@@ -474,3 +563,5 @@ export type AuditEntry = typeof auditLog.$inferSelect;
 export type IncomingPayment = typeof incomingPayments.$inferSelect;
 export type CashSummary = typeof cashSummaries.$inferSelect;
 export type Brief = typeof briefs.$inferSelect;
+export type Expense = typeof expenses.$inferSelect;
+export type RevolutConnection = typeof revolutConnection.$inferSelect;

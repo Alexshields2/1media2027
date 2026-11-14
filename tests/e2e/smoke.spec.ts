@@ -5,6 +5,7 @@ const PAGES: { path: string; heading: RegExp }[] = [
   { path: "/dashboard", heading: /^Dashboard$/ },
   { path: "/clients", heading: /^Clients$/ },
   { path: "/payments", heading: /^Payments$/ },
+  { path: "/expenses", heading: /^Expenses$/ },
   { path: "/tasks", heading: /^Tasks$/ },
   { path: "/health", heading: /^Client health$/ },
   { path: "/reports", heading: /^Reports$/ },
@@ -113,6 +114,38 @@ test.describe("signed in", () => {
     await page.getByRole("button", { name: /Generate .* rows/ }).first().click();
     await expect.poll(() => message).toMatch(/^Create \d+ unpaid retainer rows? for .+, totalling €/);
     await expect(page.getByText(/No rows for/)).toBeVisible();
+  });
+
+  test("expenses: recategorising a merchant saves and is remembered", async ({ page }) => {
+    const errors = collectErrors(page);
+    await page.goto("/expenses?category=none");
+    await expect(page.getByRole("heading", { level: 1, name: /^Expenses$/ })).toBeVisible();
+    // The demo seed leaves a few expenses uncategorised on purpose.
+    const select = page.getByLabel(/^Category for /).first();
+    await expect(select).toBeVisible();
+    {
+      const merchant = ((await select.getAttribute("aria-label")) ?? "").replace(/^Category for /, "");
+      await select.selectOption("meals");
+      // The row saves itself and leaves the uncategorised list.
+      await expect(page.getByLabel(`Category for ${merchant}`)).toHaveCount(0);
+      await page.goto("/expenses?category=meals");
+      await expect(page.getByLabel(`Category for ${merchant}`).first()).toHaveValue("meals");
+    }
+    await page.goto("/expenses");
+    await expect(page.getByText("By category")).toBeVisible();
+    expect(errors).toEqual([]);
+  });
+
+  test("integrations: Revolut Business set-up shows a public certificate, never a private key", async ({ page }) => {
+    const errors = collectErrors(page);
+    await page.goto("/integrations");
+    await expect(page.getByRole("heading", { name: /Revolut Business/ })).toBeVisible();
+    const gen = page.getByRole("button", { name: "Generate certificate" });
+    if (await gen.isVisible()) await gen.click();
+    await expect(page.getByLabel("Public certificate")).toContainText("BEGIN CERTIFICATE");
+    await expect(page.getByLabel("Revolut client ID")).toBeVisible();
+    expect(await page.content()).not.toContain("PRIVATE KEY");
+    expect(errors).toEqual([]);
   });
 
   test("chat: send a message and see the reply (or the missing-key notice) stream in", async ({ page }) => {

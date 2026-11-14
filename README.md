@@ -9,6 +9,7 @@ The operating system for 1Media: clients, cash, delivery and the AI agents that 
 | **Dashboard** | MRR, collected and outstanding this month, overdue payments, red/yellow clients, tasks due, approvals waiting, recent agent runs |
 | **Clients** | Every client with retainer, VAT, billing method, Meta ad accounts, GHL location, Stripe customer, CPL target and report rules |
 | **Payments** | The payment log: one tick box per client per month (Jan to now, any year), ticked = paid in full, half = part paid, red = overdue, with row, month and year-to-date totals, plus a "By month" list like the old Notion view. Click an amount for a part payment, date, method or note. Stripe payments are never applied automatically: they wait under "Stripe payments to assign" and you pick the month(s) each covers (split allowed, paying ahead creates the month). Upload a Revolut Business or AIB CSV and confirm the suggested matches. Overdue by age (0–14, 15–30, 31–60, 60+ days), balance per client, and the weekly cash summary |
+| **Expenses** | Everything that left the business: Revolut Business card payments, transfers and fees (synced daily), statement CSV imports and manual entries. Month totals by category, a 12-month trend, search and filters, inline recategorise (the merchant is remembered), VAT, notes, receipt links, rechargeable-to-client, and a CSV export for the accountant. Owners only |
 | **Tasks** | Board (to do / in progress / review / done), filtered by client. Agents add tasks too |
 | **Client health** | Weekly traffic light per client, scored from the numbers (CPL vs target, lead volume vs the previous 4 weeks, creative fatigue, GHL leads untouched over 24h) with the reason for each, and a 6-week history |
 | **Reports** | Per-client week view: spend, leads, CPL, impressions, clicks and CTR with week-on-week change, the WhatsApp-ready text (copy for WhatsApp, mark sent), and a run-status strip with a Retry button per client. Month-end view with a PDF per client (download, or saved to the client's Drive folder) |
@@ -64,6 +65,7 @@ Agents use Claude (Anthropic API). They reach Gmail, Calendar, Drive, Meta Ads, 
 - Month-end PDFs go to each client's Drive folder when Composio has Google Drive connected and the client record has a **Google Drive folder ID**. Otherwise download them from Reports.
 - **Jarvis in Slack** (`/jarvis <question>` and Approve / Reject buttons on approval alerts): create a Slack app from `docs/slack-app-manifest.yml` (replace `YOUR-APP` with the site's domain), install it to the workspace and pick the alerts channel. Then set `SLACK_SIGNING_SECRET` (Basic Information → Signing Secret), `SLACK_WEBHOOK_URL` (Incoming Webhooks, from this app so the buttons work) and `SLACK_ALLOWED_USER_IDS` (who may ask and approve). Questions are read-only; approvals run through the same guardrails as the Approvals page.
 - `AGENTS_PAUSED=true` pauses every scheduled agent.
+- **Revolut Business** (Expenses, and money in for Payments): set up on **Integrations → Revolut Business**, no env vars needed. See *Revolut Business* below.
 
 **Notes:**
 - Cron times are UTC, so jobs run an hour later in Irish summer time.
@@ -185,6 +187,18 @@ TEST_DATABASE_URL=postgres://postgres@localhost:5433/postgres npm test
 - **Bank (Revolut Business, AIB):** upload the CSV export on the Payments page. Only money in is read; each credit gets suggested matches (amount, client or contact name in the payer/reference, month named in the reference, date window). Nothing is recorded until you confirm. Re-uploading an overlapping export is safe. Column names per bank live in `src/lib/bank-csv.ts` (`BANK_FORMATS`).
 - **Finance agent:** reads receivables by age, queues one chaser per client per stage (3, 7, 14 days) in Approvals, and on Fridays saves the cash summary (collected, outstanding, overdue by age, forecast for the month) and posts it to Slack.
 
+## Expenses and Revolut Business
+
+- **Expenses page** (owners): each expense has a category from a fixed list (`src/lib/expense-rules.ts`). Order: the owner's merchant memory (change a merchant's category once and its other and future expenses follow), then built-in rules (merchant names and card MCC codes), else left uncategorised. With `ANTHROPIC_API_KEY` set, Claude fills uncategorised ones in batches (one request per 150 distinct merchants, low effort, structured output); it never overrides the owner and never creates memory. Transfers between our own accounts are listed but never counted.
+- **Revolut Business API** (direct, not Composio), one-time set-up on Integrations:
+  1. **Generate certificate.** The server makes an RSA key pair (the private key is stored encrypted, AES-256-GCM with a key derived from `AUTH_SECRET`; or set `REVOLUT_PRIVATE_KEY` to supply your own PEM) and shows the public X.509 certificate.
+  2. In Revolut Business: **Settings → APIs → Business API → Add API certificate**. Title "1Media OS", OAuth redirect URI `https://1media2027.vercel.app/api/revolut/callback`, paste the certificate, save. Revolut shows a **Client ID**.
+  3. Paste the Client ID on Integrations, then **Authorise with Revolut** and approve. The first sync (last 90 days) runs straight away.
+- **Sync**: daily at 05:30 UTC (`/api/cron/revolut-sync`) and **Sync now**. Card payments, transfers out and fees become expenses; own-account transfers and exchanges are skipped; money in becomes an *unmatched* payment with suggestions on Payments (never applied automatically). Everything is keyed by the Revolut transaction ID, so re-syncs and Revolut CSV uploads never double count. Access tokens refresh themselves; when Revolut stops accepting the refresh token, Integrations and the Home inbox say "Revolut needs re-authorising".
+- `REVOLUT_ENV=sandbox` uses Revolut's sandbox (`sandbox-b2b.revolut.com`); default is production. `REVOLUT_REDIRECT_URI` overrides the redirect URI (default: this site's `/api/revolut/callback`).
+- Older history: Expenses → **Import a statement** (Revolut Business → Statements → Excel/CSV). Only money out is read there.
+- Agents read expenses with the read-only `OS_LIST_EXPENSES` tool (Jarvis and Payments; never team members).
+
 To try the reporting loop without API keys, set `AGENTS_MOCK=true` (a scripted model with fixture Meta Ads and GoHighLevel data; ignored in production), then run this week's reports for every client:
 
 ```bash
@@ -215,6 +229,11 @@ src/lib/stripe-webhook.ts  Stripe events -> payments (idempotent)
 src/lib/bank-csv.ts     Revolut/AIB CSV parsing (column mapping is data)
 src/lib/matching.ts     match scoring and aging buckets (pure)
 src/lib/reconcile.ts    incoming payments -> payment rows, owner assignment
+src/lib/expenses.ts     expenses: insert/dedupe, category memory, month totals, export
+src/lib/expense-rules.ts  categories and built-in rules (pure)
+src/lib/expense-ai.ts   optional Claude categorisation of uncategorised expenses
+src/lib/secrets.ts      encrypted secrets (AES-256-GCM, key from AUTH_SECRET)
+src/lib/revolut/        Revolut Business API: certificate + JWT, tokens, transaction sync
 src/lib/finance.ts      receivables, chasers, cash summary
 src/lib/report-jobs.ts  per-client report jobs: enqueue, fan-out, retries, sweep
 src/lib/report-pdf.ts   month-end PDF (pdf-lib, no browser needed)

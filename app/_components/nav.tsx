@@ -20,6 +20,7 @@ const GROUPS: { title?: string; links: L[] }[] = [
     links: [
       { href: "/clients", label: "Clients", icon: "users" },
       { href: "/payments", label: "Payments", icon: "euro", ownerOnly: true },
+      { href: "/expenses", label: "Expenses", icon: "trend", ownerOnly: true },
       { href: "/tasks", label: "Tasks", icon: "check" },
       { href: "/health", label: "Client health", icon: "pulse" },
       { href: "/reports", label: "Reports", icon: "doc" },

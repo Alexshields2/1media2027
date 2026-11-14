@@ -13,6 +13,7 @@ import { Icon, type IconName } from "./_components/icons";
 import { AskJarvis } from "./chat/_components/ask-jarvis";
 import { recentChats } from "./chat/load";
 import { greeting } from "./_components/owner";
+import { revolutNeedsAttention } from "@/lib/revolut/connection";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -24,7 +25,7 @@ type InboxItem = { key: string; tone: "red" | "yellow" | "brand"; title: string;
 export default async function Home() {
   const user = await requireUser();
   const month = monthStart();
-  const [money, pending, health, dueTasks, runs, failedRuns, asked] = await Promise.all([
+  const [money, pending, health, dueTasks, runs, failedRuns, asked, revolut] = await Promise.all([
     moneyFigures(can(user.role, "money_stats")),
     db.select().from(schema.approvals).where(eq(schema.approvals.status, "pending")).orderBy(desc(schema.approvals.createdAt)).limit(5),
     db
@@ -42,6 +43,7 @@ export default async function Home() {
     db.select().from(schema.agentRuns).orderBy(desc(schema.agentRuns.startedAt)).limit(5),
     recentFailedRuns(24),
     recentChats(user, "jarvis", 5),
+    can(user.role, "manage_integrations") ? revolutNeedsAttention() : null,
   ]);
 
   const late = money?.late ?? [];
@@ -50,6 +52,9 @@ export default async function Home() {
   const apiReady = modelReady();
 
   const inbox: InboxItem[] = [
+    ...(revolut?.needsReauth
+      ? [{ key: "revolut", tone: "red" as const, title: "Revolut needs re-authorising", detail: "Expenses stopped syncing. Click Authorise on Integrations.", href: "/integrations#revolut" }]
+      : []),
     ...failedRuns.map((r) => ({
       key: `f${r.id}`,
       tone: "red" as const,
