@@ -1,6 +1,7 @@
 import {
-  pgTable, serial, text, integer, numeric, date, timestamp, boolean, jsonb, uniqueIndex, index,
+  pgTable, serial, text, integer, numeric, date, timestamp, boolean, jsonb, uniqueIndex, index, type AnyPgColumn,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 const money = (name: string) => numeric(name, { precision: 12, scale: 2, mode: "number" });
 
@@ -51,6 +52,23 @@ export const payments = pgTable(
   (t) => [uniqueIndex("payments_client_period_label").on(t.clientId, t.period, t.label)],
 );
 
+/** Team accounts. managerId is who they report to: Alex -> Jamie -> Ryan. */
+export const users = pgTable(
+  "users",
+  {
+    id: serial("id").primaryKey(),
+    name: text("name").notNull(),
+    email: text("email"),
+    title: text("title"),
+    role: text("role", { enum: ["owner", "manager", "member"] }).notNull().default("member"),
+    managerId: integer("manager_id").references((): AnyPgColumn => users.id, { onDelete: "set null" }),
+    passwordHash: text("password_hash"),
+    active: boolean("active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("users_name_lower").on(sql`lower(${t.name})`)],
+);
+
 export const tasks = pgTable(
   "tasks",
   {
@@ -60,13 +78,17 @@ export const tasks = pgTable(
     details: text("details"),
     status: text("status", { enum: ["todo", "in_progress", "review", "done"] }).notNull().default("todo"),
     priority: text("priority", { enum: ["high", "medium", "low"] }).notNull().default("medium"),
+    /** Free-text name, kept for agents and old rows. assigneeId is the real link. */
     assignee: text("assignee"),
+    assigneeId: integer("assignee_id").references(() => users.id, { onDelete: "set null" }),
+    /** Who created or last delegated it. */
+    createdById: integer("created_by_id").references(() => users.id, { onDelete: "set null" }),
     dueDate: date("due_date"),
     source: text("source", { enum: ["human", "agent"] }).notNull().default("human"),
     completedAt: timestamp("completed_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index("tasks_client").on(t.clientId), index("tasks_status").on(t.status)],
+  (t) => [index("tasks_client").on(t.clientId), index("tasks_status").on(t.status), index("tasks_assignee").on(t.assigneeId)],
 );
 
 export const healthChecks = pgTable(
@@ -106,6 +128,9 @@ export const agentRuns = pgTable("agent_runs", {
   id: serial("id").primaryKey(),
   agent: text("agent").notNull(),
   trigger: text("trigger", { enum: ["cron", "manual", "webhook", "cli"] }).notNull(),
+  sopId: integer("sop_id"),
+  clientId: integer("client_id"),
+  startedById: integer("started_by_id"),
   dryRun: boolean("dry_run").notNull().default(false),
   instruction: text("instruction"),
   status: text("status", { enum: ["running", "completed", "stopped", "error"] }).notNull().default("running"),
@@ -139,6 +164,112 @@ export const approvals = pgTable(
   (t) => [index("approvals_status").on(t.status)],
 );
 
+/** SOP library (Skool-style lessons) that an agent can also run on a schedule. */
+export const sops = pgTable(
+  "sops",
+  {
+    id: serial("id").primaryKey(),
+    title: text("title").notNull(),
+    category: text("category").notNull().default("General"),
+    summary: text("summary"),
+    videoUrl: text("video_url"),
+    /** Raw SOP text: pasted notes, transcript, or text pulled from an uploaded file. */
+    body: text("body"),
+    /** Clean step-by-step breakdown (markdown), written by Claude or by hand. */
+    breakdown: text("breakdown"),
+    steps: jsonb("steps").$type<string[]>().notNull().default([]),
+    fileName: text("file_name"),
+    fileType: text("file_type"),
+    fileData: text("file_data"), // base64
+    position: integer("position").notNull().default(0),
+    ownerId: integer("owner_id").references(() => users.id, { onDelete: "set null" }),
+    // Automation: an agent follows this SOP on a schedule
+    agentEnabled: boolean("agent_enabled").notNull().default(false),
+    schedule: text("schedule", { enum: ["manual", "daily", "weekdays", "weekly", "monthly"] }).notNull().default("manual"),
+    weekday: integer("weekday"), // 1 = Monday ... 7 = Sunday
+    monthDay: integer("month_day"), // 1-28
+    perClient: boolean("per_client").notNull().default(false),
+    autonomy: text("autonomy", { enum: ["L0", "L1", "L2", "L3"] }).notNull().default("L1"),
+    toolkits: jsonb("toolkits").$type<string[]>().notNull().default([]),
+    lastRunDate: date("last_run_date"),
+    archived: boolean("archived").notNull().default(false),
+    createdById: integer("created_by_id").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("sops_category").on(t.category)],
+);
+
+/** Who has completed which SOP lesson. */
+export const sopProgress = pgTable(
+  "sop_progress",
+  {
+    id: serial("id").primaryKey(),
+    sopId: integer("sop_id").notNull().references(() => sops.id, { onDelete: "cascade" }),
+    userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    completedAt: timestamp("completed_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("sop_progress_user_sop").on(t.userId, t.sopId)],
+);
+
+/** Everything that happens in the OS, by people and agents. */
+export const activity = pgTable(
+  "activity",
+  {
+    id: serial("id").primaryKey(),
+    at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),
+    actorType: text("actor_type", { enum: ["user", "agent", "system"] }).notNull(),
+    actor: text("actor").notNull(),
+    userId: integer("user_id").references(() => users.id, { onDelete: "set null" }),
+    action: text("action").notNull(), // e.g. task.created, agent.tool, sop.updated
+    summary: text("summary").notNull(),
+    entity: text("entity"),
+    entityId: integer("entity_id"),
+    meta: jsonb("meta").$type<Record<string, unknown>>(),
+  },
+  (t) => [index("activity_at").on(t.at), index("activity_actor").on(t.actor)],
+);
+
+export const eodReports = pgTable(
+  "eod_reports",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    date: date("date").notNull(),
+    done: text("done").notNull(),
+    blockers: text("blockers"),
+    tomorrow: text("tomorrow"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("eod_user_date").on(t.userId, t.date)],
+);
+
+export const voiceNotes = pgTable("voice_notes", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  transcript: text("transcript").notNull(),
+  durationSec: integer("duration_sec"),
+  status: text("status", { enum: ["processing", "done", "error"] }).notNull().default("processing"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Written updates from agents: morning briefs, business updates from voice notes. */
+export const briefings = pgTable(
+  "briefings",
+  {
+    id: serial("id").primaryKey(),
+    kind: text("kind", { enum: ["morning", "voice_update", "other"] }).notNull(),
+    forUserId: integer("for_user_id").references(() => users.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    body: text("body").notNull(),
+    runId: integer("run_id"),
+    voiceNoteId: integer("voice_note_id").references(() => voiceNotes.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("briefings_for").on(t.forUserId, t.createdAt)],
+);
+
 export interface ToolEvent {
   tool: string;
   input: unknown;
@@ -154,3 +285,9 @@ export type HealthCheck = typeof healthChecks.$inferSelect;
 export type Report = typeof reports.$inferSelect;
 export type AgentRun = typeof agentRuns.$inferSelect;
 export type Approval = typeof approvals.$inferSelect;
+export type User = typeof users.$inferSelect;
+export type Sop = typeof sops.$inferSelect;
+export type Activity = typeof activity.$inferSelect;
+export type EodReport = typeof eodReports.$inferSelect;
+export type VoiceNote = typeof voiceNotes.$inferSelect;
+export type Briefing = typeof briefings.$inferSelect;

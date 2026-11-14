@@ -8,7 +8,9 @@ import { meetings } from "./meetings";
 import { onboarding } from "./onboarding";
 import { sales } from "./sales";
 import { jarvis } from "./jarvis";
+import { morningBrief } from "./morning-brief";
+import { voiceUpdate } from "./voice-update";
 
-export const AGENT_LIST: AgentDefinition[] = [finance, weeklyReport, monthEndReport, clientHealth, inbox, meetings, onboarding, sales, jarvis];
+export const AGENT_LIST: AgentDefinition[] = [morningBrief, finance, weeklyReport, monthEndReport, clientHealth, inbox, meetings, onboarding, sales, jarvis, voiceUpdate];
 
 export const AGENTS: Record<string, AgentDefinition> = Object.fromEntries(AGENT_LIST.map((a) => [a.name, a]));

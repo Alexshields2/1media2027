@@ -10,6 +10,8 @@ import { osToolDefs, isOsTool, runOsTool, ALL_OS_TOOLS } from "./os-tools";
 import { today } from "./dates";
 import { notify } from "./slack";
 import { houseRules } from "../agents/house-rules";
+import { logActivity, asAgent, asUser } from "./activity";
+import type { User } from "../db/schema";
 import type { AgentDefinition, AgentContext } from "../agents/types";
 
 /** House rules + the agent's own prompt. Kept stable (no dates) so it caches across runs. */
@@ -25,6 +27,12 @@ export interface RunOptions {
   dryRun?: boolean;
   instruction?: string;
   trigger?: AgentRun["trigger"];
+  /** Person who pressed "Run now", for the log. */
+  startedBy?: Pick<User, "id" | "name">;
+  sopId?: number;
+  clientId?: number;
+  /** Extra content for the first message, e.g. an SOP's PDF. */
+  attachments?: Anthropic.Beta.BetaContentBlockParam[];
 }
 
 export async function runAgent(agent: AgentDefinition, opts: RunOptions = {}): Promise<AgentRun> {
@@ -34,8 +42,14 @@ export async function runAgent(agent: AgentDefinition, opts: RunOptions = {}): P
 
   const [run] = await db
     .insert(schema.agentRuns)
-    .values({ agent: agent.name, trigger: opts.trigger ?? "manual", dryRun: !!opts.dryRun, instruction: opts.instruction })
+    .values({ agent: agent.name, trigger: opts.trigger ?? "manual", dryRun: !!opts.dryRun, instruction: opts.instruction, sopId: opts.sopId, clientId: opts.clientId, startedById: opts.startedBy?.id })
     .returning();
+  await logActivity(opts.startedBy ? asUser(opts.startedBy) : asAgent(agent.name), {
+    action: "agent.started",
+    summary: `${opts.startedBy ? `Started ${agent.title}` : `${agent.title} started (${opts.trigger ?? "manual"})`}${opts.dryRun ? " as a dry run" : ""}${opts.instruction ? `: ${opts.instruction.slice(0, 200)}` : ""}`,
+    entity: "run",
+    entityId: run.id,
+  });
 
   const events: ToolEvent[] = [];
   const usage = { input: 0, output: 0, cacheRead: 0 };
@@ -49,7 +63,9 @@ export async function runAgent(agent: AgentDefinition, opts: RunOptions = {}): P
     const tools = [...osToolDefs(agent.osTools ?? ALL_OS_TOOLS), ...composioTools] as Anthropic.Beta.BetaToolUnion[];
     const system = systemPrompt(agent, autonomy);
     const note = composioEnabled() ? "" : "\n\n(Note: external apps such as Gmail, Meta Ads, HighLevel and Stripe are not connected yet. Work with the 1Media OS database only, and say what you could not check.)";
-    const messages: Anthropic.Beta.BetaMessageParam[] = [{ role: "user", content: task + note }];
+    const messages: Anthropic.Beta.BetaMessageParam[] = [
+      { role: "user", content: opts.attachments?.length ? [...opts.attachments, { type: "text", text: task + note }] : task + note },
+    ];
 
     for (let turn = 0; turn < agent.maxTurns; turn++) {
       const res = await client.beta.messages.create({
@@ -123,6 +139,12 @@ export async function runAgent(agent: AgentDefinition, opts: RunOptions = {}): P
     .returning();
 
   const proposed = count("proposed");
+  await logActivity(asAgent(agent.name), {
+    action: status === "error" ? "agent.failed" : "agent.finished",
+    summary: `${agent.title} ${status}: ${events.length} tool calls${proposed ? `, ${proposed} waiting for approval` : ""}. ${(summary ?? "").replace(/\s+/g, " ").slice(0, 300)}`,
+    entity: "run",
+    entityId: run.id,
+  });
   if (proposed || status === "error") {
     await notify(
       `*${agent.name}* ${status === "error" ? "failed" : "finished"}${proposed ? ` – ${proposed} action(s) waiting for approval` : ""}.\n${(summary ?? "").slice(0, 1500)}`,
@@ -146,13 +168,15 @@ async function handleCall(
   if (d.action === "block") {
     event.outcome = "blocked";
     event.note = d.reason;
+    await logTool(agent, runId, event);
     return { type: "tool_result", tool_use_id: call.id, is_error: true, content: `BLOCKED: ${d.reason} Do not retry this action.` };
   }
 
   if (d.action === "propose") {
     event.outcome = "proposed";
     event.note = d.reason;
-    await db.insert(schema.approvals).values({ runId, agent: agent.name, tool: call.name, input, reason: d.reason });
+    const [ap] = await db.insert(schema.approvals).values({ runId, agent: agent.name, tool: call.name, input, reason: d.reason }).returning({ id: schema.approvals.id });
+    await logActivity(asAgent(agent.name), { action: "approval.requested", summary: `Asked approval for ${call.name}: ${d.reason}`, entity: "approval", entityId: ap.id });
     return {
       type: "tool_result",
       tool_use_id: call.id,
@@ -163,16 +187,29 @@ async function handleCall(
   try {
     let out: string;
     if (isOsTool(call.name)) {
-      out = await runOsTool(call.name, input);
+      out = await runOsTool(call.name, input, { runId, agent: agent.name });
     } else {
       const toolUse: AnthropicToolUseBlock = { type: "tool_use", id: call.id, name: call.name, input };
       out = await composio().provider.executeToolCall(config.composioUserId, toolUse);
     }
     event.result = out.length > 2000 ? out.slice(0, 2000) + "…[truncated in log only]" : out;
+    await logTool(agent, runId, event);
     return { type: "tool_result", tool_use_id: call.id, content: out };
   } catch (err) {
     event.outcome = "error";
     event.note = err instanceof Error ? err.message : String(err);
+    await logTool(agent, runId, event);
     return { type: "tool_result", tool_use_id: call.id, is_error: true, content: `Tool error: ${event.note}` };
   }
+}
+
+/** One log line per tool call, so the activity log shows exactly what each agent touched. */
+function logTool(agent: AgentDefinition, runId: number, e: ToolEvent) {
+  return logActivity(asAgent(agent.name), {
+    action: "agent.tool",
+    summary: `${e.outcome === "ran" ? "Ran" : e.outcome === "blocked" ? "Blocked from" : "Error in"} ${e.tool}${e.note ? ` (${e.note.slice(0, 200)})` : ""}`,
+    entity: "run",
+    entityId: runId,
+    meta: { input: e.input },
+  });
 }

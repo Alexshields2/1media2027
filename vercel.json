@@ -1,10 +1,13 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "crons": [
+    { "path": "/api/cron/morning-brief", "schedule": "0 6 * * 1-5" },
+    { "path": "/api/cron/sops", "schedule": "30 6 * * *" },
     { "path": "/api/cron/finance", "schedule": "0 8 * * 1-5" },
     { "path": "/api/cron/client-health", "schedule": "30 8 * * 1-5" },
     { "path": "/api/cron/weekly-report", "schedule": "0 7 * * 1" },
     { "path": "/api/cron/month-end-report", "schedule": "0 9 1 * *" },
-    { "path": "/api/cron/billing", "schedule": "0 6 1 * *" }
+    { "path": "/api/cron/billing", "schedule": "0 6 1 * *" },
+    { "path": "/api/cron/eod-reminder", "schedule": "0 17 * * 1-5" }
   ]
 }

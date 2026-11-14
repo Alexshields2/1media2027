@@ -1,14 +1,45 @@
 import Link from "next/link";
-import { desc, eq, ne, and, lte } from "drizzle-orm";
+import { desc, eq, ne, and, lte, or, isNull, inArray } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { mrr, monthTotals, overdue } from "@/lib/billing";
 import { eur, monthLabel, monthStart, today, weekStart } from "@/lib/dates";
+import { allUsers, requireUser } from "@/lib/session";
+import { downline } from "@/lib/team";
 import { Badge, Card, Empty, PageHeader, Stat } from "./_components/ui";
+import { Markdown } from "./_components/markdown";
 
 export const dynamic = "force-dynamic";
 
 export default async function Dashboard() {
+  const me = await requireUser();
+  const users = await allUsers();
+  const team = downline(users, me.id);
   const month = monthStart();
+  const t0 = today();
+  const [brief, voiceUpdate, myTasks, eodsToday] = await Promise.all([
+    db
+      .select()
+      .from(schema.briefings)
+      .where(and(eq(schema.briefings.kind, "morning"), or(eq(schema.briefings.forUserId, me.id), isNull(schema.briefings.forUserId))))
+      .orderBy(desc(schema.briefings.createdAt))
+      .limit(1),
+    db
+      .select()
+      .from(schema.briefings)
+      .where(and(eq(schema.briefings.kind, "voice_update"), eq(schema.briefings.forUserId, me.id)))
+      .orderBy(desc(schema.briefings.createdAt))
+      .limit(1),
+    db
+      .select({ t: schema.tasks, client: schema.clients.name })
+      .from(schema.tasks)
+      .leftJoin(schema.clients, eq(schema.clients.id, schema.tasks.clientId))
+      .where(and(eq(schema.tasks.assigneeId, me.id), ne(schema.tasks.status, "done")))
+      .orderBy(schema.tasks.dueDate)
+      .limit(8),
+    team.length
+      ? db.select({ userId: schema.eodReports.userId }).from(schema.eodReports).where(and(eq(schema.eodReports.date, t0), inArray(schema.eodReports.userId, team)))
+      : Promise.resolve([] as { userId: number }[]),
+  ]);
   const [m, totals, late, pending, health, dueTasks, runs] = await Promise.all([
     mrr(),
     monthTotals(month),
@@ -33,7 +64,61 @@ export default async function Dashboard() {
 
   return (
     <>
-      <PageHeader title="Dashboard" subtitle={`${monthLabel(month)} · today ${today()}`} />
+      <PageHeader title={`Hi ${me.name}`} subtitle={`${monthLabel(month)} · today ${today()}`} />
+
+      <div className="mb-6 grid gap-6 lg:grid-cols-[3fr_2fr]">
+        <Card
+          title={brief[0] ? brief[0].title : "Morning brief"}
+          actions={brief[0] ? <span className="text-xs text-black/50">{brief[0].createdAt.toLocaleString("en-IE", { timeZone: "Europe/Dublin", dateStyle: "medium", timeStyle: "short" })}</span> : undefined}
+        >
+          {brief[0] ? (
+            <div className="max-h-96 overflow-y-auto">
+              <Markdown text={brief[0].body} />
+            </div>
+          ) : (
+            <Empty>No brief yet. The morning brief agent writes one for each person on weekday mornings; you can also run it from Agents.</Empty>
+          )}
+        </Card>
+        <div className="space-y-6">
+          <Card title="On you" actions={<Link href="/tasks?who=mine" className="text-xs text-brand">My tasks →</Link>}>
+            {myTasks.length ? (
+              <ul className="divide-y divide-black/5 text-sm">
+                {myTasks.map(({ t, client }) => (
+                  <li key={t.id} className="flex items-center justify-between gap-3 py-2">
+                    <span className="min-w-0 truncate">
+                      {t.title} {client && <span className="text-black/50">· {client}</span>}
+                    </span>
+                    {t.dueDate && <span className={`num shrink-0 text-xs whitespace-nowrap ${t.dueDate < t0 ? "font-medium text-red-600" : "text-black/50"}`}>{t.dueDate}</span>}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <Empty>Nothing assigned to you.</Empty>
+            )}
+          </Card>
+          {team.length > 0 && (
+            <Card title="Team end-of-day reports" actions={<Link href="/eod" className="text-xs text-brand">End of day →</Link>}>
+              <div className="flex flex-wrap gap-2 text-sm">
+                {users
+                  .filter((u) => team.includes(u.id) && u.active)
+                  .map((u) => (
+                    <Badge key={u.id} tone={eodsToday.some((e) => e.userId === u.id) ? "green" : "yellow"}>
+                      {u.name}: {eodsToday.some((e) => e.userId === u.id) ? "sent" : "not yet"}
+                    </Badge>
+                  ))}
+              </div>
+            </Card>
+          )}
+          {voiceUpdate[0] && (
+            <Card title="Latest business update" actions={<Link href="/voice" className="text-xs text-brand">Voice notes →</Link>}>
+              <p className="mb-2 text-xs text-black/50">{voiceUpdate[0].title}</p>
+              <div className="max-h-48 overflow-y-auto">
+                <Markdown text={voiceUpdate[0].body} />
+              </div>
+            </Card>
+          )}
+        </div>
+      </div>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat label="MRR (ex VAT)" value={eur(m.exVat)} hint={`${m.clients} active clients`} />

@@ -36,7 +36,7 @@ export default async function AgentsPage({ searchParams }: { searchParams: Promi
       )}
 
       <div className="grid gap-4 md:grid-cols-2">
-        {AGENT_LIST.map((a) => (
+        {AGENT_LIST.filter((a) => !a.hidden).map((a) => (
           <Card key={a.name} title={a.title} actions={<Badge tone="gray">{a.scheduleLabel ?? "On demand"}</Badge>}>
             <p className="text-sm text-black/70">{a.description}</p>
             <p className="mt-2 text-xs text-black/50">

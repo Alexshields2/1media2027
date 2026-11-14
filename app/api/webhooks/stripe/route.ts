@@ -5,6 +5,7 @@ import { db, schema } from "@/db";
 import { recordPayment, round2 } from "@/lib/billing";
 import { notify } from "@/lib/slack";
 import { eur } from "@/lib/dates";
+import { logActivity, asSystem } from "@/lib/activity";
 
 // Stripe -> Developers -> Webhooks: point an endpoint at /api/webhooks/stripe with the
 // event "invoice.paid". Each paid invoice is applied to the client's oldest unpaid rows.
@@ -35,6 +36,7 @@ export async function POST(req: NextRequest) {
   const [client] = await db.select().from(schema.clients).where(eq(schema.clients.stripeCustomerId, customerId));
   if (!client) {
     await notify(`Stripe payment of ${eur(amount)} from customer ${customerId} doesn't match any client. Add the Stripe customer ID to the client in 1Media OS.`);
+    await logActivity(asSystem("stripe"), { action: "payment.unmatched", summary: `Stripe payment of ${eur(amount)} from ${customerId} matched no client` });
     return NextResponse.json({ unmatched: customerId });
   }
 
@@ -64,5 +66,6 @@ export async function POST(req: NextRequest) {
   }
 
   await notify(`${client.name} paid ${eur(amount)} via Stripe${left > 0.005 ? ` (${eur(left)} not matched to any open month)` : ""}.`);
+  await logActivity(asSystem("stripe"), { action: "payment.recorded", summary: `${client.name} paid ${eur(amount)} via Stripe${left > 0.005 ? ` (${eur(left)} unmatched)` : ""}`, entity: "client", entityId: client.id });
   return NextResponse.json({ client: client.name, applied: round2(amount - left), unapplied: left });
 }

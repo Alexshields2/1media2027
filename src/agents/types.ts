@@ -29,6 +29,8 @@ export interface AgentDefinition {
   schedule?: string;
   /** Plain-English schedule for the UI. */
   scheduleLabel?: string;
+  /** Not shown on the Agents page and not scheduled (started by another feature, e.g. voice notes). */
+  hidden?: boolean;
   /** Agents that need an instruction to run (e.g. onboarding, jarvis). */
   needsInstruction?: boolean;
   effort: "low" | "medium" | "high" | "xhigh";

@@ -4,14 +4,33 @@ import { and, desc, eq, gte, inArray, ne, sql as dsql } from "drizzle-orm";
 import { db, schema } from "../db";
 import { recordPayment, paymentState, round2 } from "./billing";
 import { today, weekStart } from "./dates";
+import { logActivity, asAgent } from "./activity";
 
 // Tools that let agents read and write the 1Media OS database.
 // Names start with OS_ so the guardrails treat them as internal.
 
+/** Who is calling a tool, so writes can be linked to the run. */
+export interface OsToolContext {
+  runId?: number;
+  agent?: string;
+}
+
 interface OsTool {
   def: Anthropic.Tool;
   input: z.ZodType;
-  run: (input: any) => Promise<unknown>;
+  run: (input: any, ctx: OsToolContext) => Promise<unknown>;
+}
+
+/** Finds a team member by first name or email (case-insensitive). */
+async function userByName(name: string | undefined) {
+  if (!name) return undefined;
+  const n = name.trim().toLowerCase();
+  const [u] = await db
+    .select({ id: schema.users.id, name: schema.users.name })
+    .from(schema.users)
+    .where(dsql`lower(${schema.users.name}) = ${n} or lower(${schema.users.email}) = ${n} or lower(split_part(${schema.users.name}, ' ', 1)) = ${n}`)
+    .limit(1);
+  return u;
 }
 
 const id = z.coerce.number().int().positive();
@@ -104,23 +123,27 @@ const tools: Record<string, OsTool> = {
   OS_LIST_TASKS: {
     def: {
       name: "OS_LIST_TASKS",
-      description: "List tasks. Optionally for one client, by status, or only those completed since a date.",
+      description: "List tasks with client, assignee and who delegated them. Optionally for one client or one person, by status, or only those completed since a date.",
       input_schema: {
         type: "object",
         properties: {
           client_id: { type: "integer" },
+          assignee_id: { type: "integer", description: "Team member id from OS_LIST_TEAM." },
           status: { type: "string", enum: ["open", "done", "all"] },
           completed_since: { type: "string", description: "YYYY-MM-DD; with status=done." },
         },
       },
     },
-    input: z.object({ client_id: id.optional(), status: z.enum(["open", "done", "all"]).optional(), completed_since: isoDate.optional() }),
-    run: async ({ client_id, status = "open", completed_since }) => {
+    input: z.object({ client_id: id.optional(), assignee_id: id.optional(), status: z.enum(["open", "done", "all"]).optional(), completed_since: isoDate.optional() }),
+    run: async ({ client_id, assignee_id, status = "open", completed_since }) => {
       const conds = [];
       if (client_id) conds.push(eq(schema.tasks.clientId, client_id));
+      if (assignee_id) conds.push(eq(schema.tasks.assigneeId, assignee_id));
       if (status === "open") conds.push(ne(schema.tasks.status, "done"));
       if (status === "done") conds.push(eq(schema.tasks.status, "done"));
       if (completed_since) conds.push(gte(schema.tasks.completedAt, new Date(`${completed_since}T00:00:00Z`)));
+      const team = await db.select({ id: schema.users.id, name: schema.users.name }).from(schema.users);
+      const nameOf = (uid: number | null) => team.find((u) => u.id === uid)?.name ?? null;
       return db
         .select({ t: schema.tasks, client: schema.clients.name })
         .from(schema.tasks)
@@ -128,7 +151,9 @@ const tools: Record<string, OsTool> = {
         .where(conds.length ? and(...conds) : undefined)
         .orderBy(desc(schema.tasks.createdAt))
         .limit(300)
-        .then((rows) => rows.map((r) => ({ ...r.t, client: r.client })));
+        .then((rows) =>
+          rows.map((r) => ({ ...r.t, client: r.client, assignee: nameOf(r.t.assigneeId) ?? r.t.assignee, delegatedBy: nameOf(r.t.createdById) })),
+        );
     },
   },
 
@@ -144,7 +169,7 @@ const tools: Record<string, OsTool> = {
           details: { type: "string" },
           priority: { type: "string", enum: ["high", "medium", "low"] },
           due_date: { type: "string", description: "YYYY-MM-DD" },
-          assignee: { type: "string" },
+          assignee: { type: "string", description: "Team member's first name (see OS_LIST_TEAM)." },
         },
         required: ["title"],
       },
@@ -157,12 +182,14 @@ const tools: Record<string, OsTool> = {
       due_date: isoDate.optional(),
       assignee: z.string().optional(),
     }),
-    run: async (i) => {
+    run: async (i, ctx) => {
+      const who = await userByName(i.assignee);
       const [t] = await db
         .insert(schema.tasks)
-        .values({ title: i.title, clientId: i.client_id, details: i.details, priority: i.priority, dueDate: i.due_date, assignee: i.assignee, source: "agent" })
+        .values({ title: i.title, clientId: i.client_id, details: i.details, priority: i.priority, dueDate: i.due_date, assignee: who?.name ?? i.assignee, assigneeId: who?.id, source: "agent" })
         .returning({ id: schema.tasks.id });
-      return { ok: true, task_id: t.id };
+      await logActivity(asAgent(ctx.agent ?? "agent"), { action: "task.created", summary: `Created task "${i.title}"${who ? ` for ${who.name}` : ""}`, entity: "task", entityId: t.id });
+      return { ok: true, task_id: t.id, assignee: who?.name ?? i.assignee ?? null };
     },
   },
 
@@ -296,6 +323,115 @@ const tools: Record<string, OsTool> = {
       return db.select().from(schema.reports).where(and(...conds)).orderBy(desc(schema.reports.createdAt)).limit(100);
     },
   },
+
+  OS_LIST_TEAM: {
+    def: {
+      name: "OS_LIST_TEAM",
+      description: "The 1Media team: id, name, role, title and who each person reports to (Alex -> Jamie -> Ryan).",
+      input_schema: { type: "object", properties: {} },
+    },
+    input: z.object({}),
+    run: async () => {
+      const team = await db.select().from(schema.users).where(eq(schema.users.active, true)).orderBy(schema.users.id);
+      return team.map((u) => ({ id: u.id, name: u.name, role: u.role, title: u.title, reportsTo: team.find((m) => m.id === u.managerId)?.name ?? null }));
+    },
+  },
+
+  OS_LIST_EOD_REPORTS: {
+    def: {
+      name: "OS_LIST_EOD_REPORTS",
+      description: "End-of-day reports from the team (what they did, blockers, plan for tomorrow), newest first.",
+      input_schema: {
+        type: "object",
+        properties: {
+          since: { type: "string", description: "YYYY-MM-DD; default 7 days ago." },
+          user_id: { type: "integer" },
+        },
+      },
+    },
+    input: z.object({ since: isoDate.optional(), user_id: id.optional() }),
+    run: async ({ since, user_id }) => {
+      const from = since ?? new Date(Date.now() - 7 * 86_400_000).toISOString().slice(0, 10);
+      const conds = [gte(schema.eodReports.date, from)];
+      if (user_id) conds.push(eq(schema.eodReports.userId, user_id));
+      return db
+        .select({ r: schema.eodReports, name: schema.users.name })
+        .from(schema.eodReports)
+        .innerJoin(schema.users, eq(schema.users.id, schema.eodReports.userId))
+        .where(and(...conds))
+        .orderBy(desc(schema.eodReports.date))
+        .then((rows) => rows.map(({ r, name }) => ({ name, date: r.date, done: r.done, blockers: r.blockers, tomorrow: r.tomorrow })));
+    },
+  },
+
+  OS_LIST_ACTIVITY: {
+    def: {
+      name: "OS_LIST_ACTIVITY",
+      description: "The OS activity log: what people and agents did (tasks, payments, approvals, SOPs, agent runs), newest first.",
+      input_schema: {
+        type: "object",
+        properties: {
+          hours: { type: "integer", description: "How far back, default 24." },
+          actor: { type: "string", description: "Only this person or agent name." },
+        },
+      },
+    },
+    input: z.object({ hours: z.number().int().min(1).max(24 * 31).optional(), actor: z.string().optional() }),
+    run: async ({ hours = 24, actor }) => {
+      const conds = [gte(schema.activity.at, new Date(Date.now() - hours * 3_600_000))];
+      if (actor) conds.push(dsql`lower(${schema.activity.actor}) = ${actor.toLowerCase()}`);
+      // Skip per-tool-call noise; agent runs are summarised by their start/finish lines.
+      conds.push(ne(schema.activity.action, "agent.tool"));
+      return db
+        .select({ at: schema.activity.at, actor: schema.activity.actor, action: schema.activity.action, summary: schema.activity.summary })
+        .from(schema.activity)
+        .where(and(...conds))
+        .orderBy(desc(schema.activity.at))
+        .limit(300);
+    },
+  },
+
+  OS_LIST_APPROVALS: {
+    def: {
+      name: "OS_LIST_APPROVALS",
+      description: "Agent actions waiting for a human to approve.",
+      input_schema: { type: "object", properties: {} },
+    },
+    input: z.object({}),
+    run: async () =>
+      db
+        .select({ id: schema.approvals.id, agent: schema.approvals.agent, tool: schema.approvals.tool, reason: schema.approvals.reason, createdAt: schema.approvals.createdAt })
+        .from(schema.approvals)
+        .where(eq(schema.approvals.status, "pending"))
+        .orderBy(desc(schema.approvals.createdAt)),
+  },
+
+  OS_SAVE_BRIEFING: {
+    def: {
+      name: "OS_SAVE_BRIEFING",
+      description: "Save a written update for a team member to read in 1Media OS (morning brief, or a business update from a voice note).",
+      input_schema: {
+        type: "object",
+        properties: {
+          kind: { type: "string", enum: ["morning", "voice_update", "other"] },
+          for_user_id: { type: "integer", description: "Who it is for (OS_LIST_TEAM). Leave out for everyone." },
+          title: { type: "string" },
+          body: { type: "string", description: "Markdown." },
+          voice_note_id: { type: "integer" },
+        },
+        required: ["kind", "title", "body"],
+      },
+    },
+    input: z.object({ kind: z.enum(["morning", "voice_update", "other"]), for_user_id: id.optional(), title: z.string().min(3), body: z.string().min(20), voice_note_id: id.optional() }),
+    run: async (i, ctx) => {
+      const [b] = await db
+        .insert(schema.briefings)
+        .values({ kind: i.kind, forUserId: i.for_user_id, title: i.title, body: i.body, voiceNoteId: i.voice_note_id, runId: ctx.runId })
+        .returning({ id: schema.briefings.id });
+      if (i.voice_note_id) await db.update(schema.voiceNotes).set({ status: "done" }).where(eq(schema.voiceNotes.id, i.voice_note_id));
+      return { ok: true, briefing_id: b.id };
+    },
+  },
 };
 
 export function osToolDefs(names?: string[]): Anthropic.Tool[] {
@@ -309,12 +445,12 @@ export function isOsTool(name: string): boolean {
 }
 
 /** Validates the input, runs the tool and returns a JSON string for the model. */
-export async function runOsTool(name: string, rawInput: unknown): Promise<string> {
+export async function runOsTool(name: string, rawInput: unknown, ctx: OsToolContext = {}): Promise<string> {
   const t = tools[name];
   if (!t) throw new Error(`Unknown OS tool ${name}`);
   const parsed = t.input.safeParse(rawInput ?? {});
   if (!parsed.success) throw new Error(`Invalid input for ${name}: ${parsed.error.message}`);
-  return JSON.stringify(await t.run(parsed.data));
+  return JSON.stringify(await t.run(parsed.data, ctx));
 }
 
 export const ALL_OS_TOOLS = Object.keys(tools);
