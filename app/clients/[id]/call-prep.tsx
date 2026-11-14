@@ -38,40 +38,42 @@ export function CallPrepCard({ clientId, brief, lastRun, started }: { clientId: 
         <div className="space-y-3 text-sm">
           <div>
             <div className="font-medium">{brief.title}</div>
-            <div className="text-xs text-ink/50">
+            <div className="text-xs text-muted">
               Written {when(brief.createdAt)}
               {brief.callAt && <> · call {when(brief.callAt)}</>}
             </div>
           </div>
           {brief.leads.length > 0 ? (
             <div>
-              <div className="mb-1 text-xs font-medium uppercase tracking-wide text-ink/50">Every lead ({brief.leads.length})</div>
+              <div className="mb-1 text-xs font-medium uppercase tracking-wide text-muted">Every lead ({brief.leads.length})</div>
               <ul className="divide-y divide-line/70">
                 {brief.leads.map((l, i) => (
                   <li key={i} className="flex items-start justify-between gap-2 py-1.5">
                     <span>
                       <span className="font-medium">{l.name}</span>
-                      {l.note && <span className="block text-xs text-ink/50">{l.note}</span>}
+                      {l.note && <span className="block text-xs text-muted">{l.note}</span>}
                     </span>
-                    <span className="flex shrink-0 items-center gap-1.5 text-xs text-ink/60">
+                    <span className="flex shrink-0 items-center gap-1.5 text-xs text-soft">
                       {l.stage}
                       {typeof l.daysSinceContact === "number" && <span>· {l.daysSinceContact}d</span>}
-                      {l.untouched && <Badge tone="red">untouched</Badge>}
+                      {l.untouched && <Badge tone="red" dot>untouched</Badge>}
                     </span>
                   </li>
                 ))}
               </ul>
             </div>
           ) : (
-            <p className="text-xs text-ink/50">No leads listed in this brief.</p>
+            <p className="text-xs text-muted">No leads listed in this brief.</p>
           )}
           <details>
-            <summary className="cursor-pointer text-xs text-ink/60 hover:text-ink">Full brief</summary>
-            <pre className="mt-2 rounded-md bg-ink/[0.03] p-3 font-sans text-sm whitespace-pre-wrap">{brief.body}</pre>
+            <summary className="cursor-pointer text-xs text-soft hover:text-ink">Full brief</summary>
+            <pre className="mt-2 rounded-xl border border-line bg-canvas/60 p-4 font-sans text-sm leading-relaxed whitespace-pre-wrap text-soft">{brief.body}</pre>
           </details>
         </div>
       ) : (
-        !started && !running && <Empty>No call prep yet. Click Prep for call before the next call.</Empty>
+        !started && !running && <Empty icon="mail" title="No call prep yet" compact>
+            Click Prep for call before the next call: every lead by name, the numbers and questions to ask.
+          </Empty>
       )}
     </Card>
   );
@@ -85,11 +87,11 @@ export function InboxNotesCard({ notes }: { notes: Brief[] }) {
       <ul className="divide-y divide-line/70 text-sm">
         {notes.map((n) => (
           <li key={n.id} className="py-2">
-            <div className="flex items-center justify-between text-xs text-ink/50">
+            <div className="flex items-center justify-between text-xs text-muted">
               <span>{n.title}</span>
               <span>{when(n.createdAt)}</span>
             </div>
-            <p className="mt-0.5 whitespace-pre-wrap text-ink/80">{n.body}</p>
+            <p className="mt-0.5 whitespace-pre-wrap text-soft">{n.body}</p>
           </li>
         ))}
       </ul>

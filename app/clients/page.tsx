@@ -6,7 +6,8 @@ import { can } from "@/lib/roles";
 import { eur, weekStart } from "@/lib/dates";
 import { setupProgress } from "@/lib/setup";
 import { ClientBanner, ClientLogo } from "../_components/client-logo";
-import { Badge, Card, Empty, PageHeader, Table, btn } from "../_components/ui";
+import { Badge, Card, Empty, HealthDot, PageHeader, Progress, Segmented, Table, btn, healthLabel, td, tdNum } from "../_components/ui";
+import { Icon } from "../_components/icons";
 import { requireUser } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
@@ -37,19 +38,17 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
         subtitle={q ? `${clients.length} matching “${q}”` : `${clients.filter((c) => c.status === "active").length} active`}
         actions={
           <>
-            <div className="flex rounded-full border border-line bg-panel p-0.5 text-sm">
-              {(["cards", "table"] as const).map((v) => (
-                <Link
-                  key={v}
-                  href={`/clients?${new URLSearchParams({ ...(q ? { q } : {}), ...(v === "table" ? { view: v } : {}) })}`}
-                  className={`rounded-full px-3 py-1 ${view === v ? "bg-ink/[0.08] font-medium" : "text-ink/55 hover:text-ink"}`}
-                >
-                  {v === "cards" ? "Gallery" : "Table"}
-                </Link>
-              ))}
-            </div>
+            <Segmented
+              label="View"
+              items={(["cards", "table"] as const).map((v) => ({
+                href: `/clients?${new URLSearchParams({ ...(q ? { q } : {}), ...(v === "table" ? { view: v } : {}) })}`,
+                label: v === "cards" ? "Gallery" : "Table",
+                icon: v === "cards" ? ("grid" as const) : ("list" as const),
+                active: view === v,
+              }))}
+            />
             <Link href="/clients/new" className={btn}>
-              Add client
+              <Icon name="plus" /> Add client
             </Link>
           </>
         }
@@ -65,37 +64,37 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
                 <Link
                   key={c.id}
                   href={`/clients/${c.id}`}
-                  className="group overflow-hidden rounded-2xl border border-line bg-panel transition duration-200 hover:-translate-y-0.5 hover:border-brand/50 hover:shadow-[0_8px_40px_rgb(4_153_242/0.15)]"
+                  className="group surface overflow-hidden rounded-2xl border border-line bg-panel transition duration-200 hover:-translate-y-0.5 motion-reduce:hover:translate-y-0 hover:border-brand/50 hover:shadow-[0_8px_40px_rgb(4_153_242/0.15)]"
                 >
                   <div className="relative">
                     <ClientBanner name={c.name} className="h-32 border-b border-line" />
                     <span className="absolute top-3 right-3">
-                      <Badge tone={STATUS_TONE[c.status]}>{c.status}</Badge>
+                      <Badge tone={STATUS_TONE[c.status]} dot className="backdrop-blur">
+                        {c.status}
+                      </Badge>
                     </span>
                   </div>
                   <div className="p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <div className="truncate font-semibold group-hover:text-brand-light">{c.name}</div>
-                        <div className="truncate text-xs text-ink/45">{[c.industry, c.contactName].filter(Boolean).join(" · ") || "No industry set"}</div>
+                        <div className="truncate font-semibold text-white group-hover:text-brand-light">{c.name}</div>
+                        <div className="truncate text-xs text-muted">{[c.industry, c.contactName].filter(Boolean).join(" · ") || "No industry set"}</div>
                       </div>
                       {money && (
                         <div className="shrink-0 text-right">
-                          <div className="num text-sm font-semibold">{eur(c.retainerExVat)}</div>
-                          <div className="text-[10px] text-ink/40">per month</div>
+                          <div className="num text-sm font-semibold text-white">{eur(c.retainerExVat)}</div>
+                          <div className="text-[11px] text-muted">per month</div>
                         </div>
                       )}
                     </div>
                     <div className="mt-4 flex items-center justify-between text-xs">
-                      <span className="flex items-center gap-1.5 text-ink/60">
-                        <span className={`size-2 rounded-full ${h ? (h.status === "green" ? "bg-emerald-400 shadow-[0_0_8px_#34d399]" : h.status === "yellow" ? "bg-amber-400 shadow-[0_0_8px_#fbbf24]" : "bg-red-400 shadow-[0_0_8px_#f87171]") : "bg-ink/20"}`} />
+                      <span className="flex items-center gap-1.5 text-soft">
+                        <HealthDot status={h?.status} size="sm" />
                         {h ? `${h.status[0].toUpperCase()}${h.status.slice(1)} this week` : "No health check yet"}
                       </span>
-                      <span className="num text-ink/45">{setup.complete ? "Set up" : `${setup.done}/${setup.total} set up`}</span>
+                      <span className="num text-muted">{setup.complete ? "Set up" : `${setup.done}/${setup.total} set up`}</span>
                     </div>
-                    <div className="mt-2 h-1 overflow-hidden rounded-full bg-ink/[0.07]">
-                      <div className={`h-full rounded-full ${setup.complete ? "bg-emerald-400" : "brand-gradient"}`} style={{ width: `${pct}%` }} />
-                    </div>
+                    <Progress value={pct} max={100} tone={setup.complete ? "green" : "brand"} label={`${c.name} set-up`} className="mt-2 !h-1" />
                   </div>
                 </Link>
               );
@@ -103,44 +102,51 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
           </div>
         ) : (
           <Card>
-            <Empty>
-              No clients yet. <Link href="/clients/new" className="text-brand underline">Add your first client</Link>.
+            <Empty icon="users" title={q ? `No clients match “${q}”` : "No clients yet"} action={q ? <Link href="/clients" className={btn}>Show all clients</Link> : <Link href="/clients/new" className={btn}><Icon name="plus" /> Add your first client</Link>}>
+              {q ? "Try a business name, contact or email." : "Add a client to start billing, reporting and health checks."}
             </Empty>
           </Card>
         )
       ) : (
-      <Card>
+      <Card flush>
         {clients.length ? (
-          <Table head={["Client", "Status", ...(money ? ["Retainer", "Billed / month"] : []), "CPL target", "This week", "Set up"]}>
+          <Table head={["Client", "Status", ...(money ? [{ label: "Retainer", align: "right" as const }, { label: "Billed / month", align: "right" as const }] : []), { label: "CPL target", align: "right" }, "This week", "Set up"]} minWidth={820}>
             {clients.map((c) => {
               const h = healthBy.get(c.id);
               const setup = setupProgress(c, { billing: money });
               return (
-                <tr key={c.id} className="hover:bg-ink/[0.02]">
-                  <td className="px-4 py-2.5">
+                <tr key={c.id}>
+                  <td className="px-4 py-3 first:pl-5 last:pr-5">
                     <div className="flex items-center gap-3">
                       <ClientLogo name={c.name} size={36} />
                       <div className="min-w-0">
-                        <Link href={`/clients/${c.id}`} className="font-medium hover:underline">
+                        <Link href={`/clients/${c.id}`} className="font-medium text-white hover:text-brand-light">
                           {c.name}
                         </Link>
-                        {c.industry && <div className="text-xs text-ink/50">{c.industry}</div>}
+                        {c.industry && <div className="text-xs text-muted">{c.industry}</div>}
                       </div>
                     </div>
                   </td>
-                  <td className="px-4 py-2.5">
-                    <Badge tone={STATUS_TONE[c.status]}>{c.status}</Badge>
+                  <td className="px-4 py-3 first:pl-5 last:pr-5">
+                    <Badge tone={STATUS_TONE[c.status]} dot>
+                      {c.status}
+                    </Badge>
                   </td>
-                  {money && <td className="num px-4 py-2.5">{eur(c.retainerExVat)}</td>}
-                  {money && <td className="num px-4 py-2.5">{eur(amountDue(c))}</td>}
-                  <td className="num px-4 py-2.5">{eur(c.cplTarget, c.reportCurrency)}</td>
-                  <td className="px-4 py-2.5">{h ? <Badge tone={h.status}>{h.status}</Badge> : <span className="text-ink/30">–</span>}</td>
-                  <td className="px-4 py-2.5 text-xs">
+                  {money && <td className={tdNum}>{eur(c.retainerExVat)}</td>}
+                  {money && <td className={`${tdNum} text-soft`}>{eur(amountDue(c))}</td>}
+                  <td className={tdNum}>{eur(c.cplTarget, c.reportCurrency)}</td>
+                  <td className={td}>
+                    <span className="flex items-center gap-2">
+                      <HealthDot status={h?.status} size="sm" />
+                      <span className={h ? "text-white" : "text-muted"}>{h ? healthLabel(h.status) : "Not checked"}</span>
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 first:pl-5 last:pr-5 text-xs">
                     {setup.complete ? (
-                      <span className="text-emerald-400">Complete</span>
+                      <span className="inline-flex items-center gap-1 text-emerald-300"><Icon name="check" className="size-3.5" /> Complete</span>
                     ) : (
-                      <Link href={`/clients/${c.id}`} className="text-amber-400 hover:underline" title={`${setup.done} of ${setup.total} set up`}>
-                        <span className="num text-ink/50">{setup.done}/{setup.total}</span> Missing {setup.missing.map((i) => i.short).join(", ")}
+                      <Link href={`/clients/${c.id}`} className="text-amber-300 hover:underline" title={`${setup.done} of ${setup.total} set up`}>
+                        <span className="num text-muted">{setup.done}/{setup.total}</span> Missing {setup.missing.map((i) => i.short).join(", ")}
                       </Link>
                     )}
                   </td>
@@ -149,9 +155,7 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
             })}
           </Table>
         ) : (
-          <Empty>
-            No clients yet. <Link href="/clients/new" className="text-brand underline">Add your first client</Link>.
-          </Empty>
+          <Empty icon="users" title={q ? `No clients match “${q}”` : "No clients yet"} action={<Link href="/clients/new" className={btn}><Icon name="plus" /> Add client</Link>} />
         )}
       </Card>
       )}

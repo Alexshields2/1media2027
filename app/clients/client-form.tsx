@@ -34,9 +34,9 @@ function Select({ name, title, value, options }: { name: string; title: string; 
 export function ClientForm({ client, action, submitLabel, showBilling = true }: { client?: Client; action: (f: FormData) => Promise<void>; submitLabel: string; showBilling?: boolean }) {
   const c = client;
   return (
-    <form action={action} className="space-y-6">
+    <form action={action} className="space-y-8">
       <fieldset className="grid gap-4 sm:grid-cols-2">
-        <legend className="mb-2 text-sm font-semibold">Business</legend>
+        <legend className="mb-3 text-[11px] font-semibold tracking-[0.16em] text-brand-light uppercase">Business</legend>
         <Field name="name" title="Business name *" defaultValue={c?.name} />
         <Select name="status" title="Status" value={c?.status ?? "active"} options={[["onboarding", "Onboarding"], ["active", "Active"], ["paused", "Paused"], ["churned", "Churned"]]} />
         <Field name="contactName" title="Contact name" defaultValue={c?.contactName} />
@@ -49,7 +49,7 @@ export function ClientForm({ client, action, submitLabel, showBilling = true }: 
 
       {showBilling && (
       <fieldset className="grid gap-4 sm:grid-cols-3">
-        <legend className="mb-2 text-sm font-semibold">Billing</legend>
+        <legend className="mb-3 text-[11px] font-semibold tracking-[0.16em] text-brand-light uppercase">Billing</legend>
         <Field name="retainerExVat" title="Monthly retainer (ex VAT)" type="number" defaultValue={c?.retainerExVat} />
         <Select name="vat" title="VAT" value={c?.vat ?? "plus"} options={[["plus", "Plus VAT (23%)"], ["inc", "Inc VAT"], ["none", "No VAT"]]} />
         <Select name="billingMethod" title="Billing method" value={c?.billingMethod ?? "invoice"} options={[["stripe", "Stripe"], ["invoice", "Invoice"], ["revolut", "Revolut"], ["aib", "AIB"], ["cash", "Cash"]]} />
@@ -57,7 +57,7 @@ export function ClientForm({ client, action, submitLabel, showBilling = true }: 
       )}
 
       <fieldset className="grid gap-4 sm:grid-cols-3">
-        <legend className="mb-2 text-sm font-semibold">Integrations</legend>
+        <legend className="mb-3 text-[11px] font-semibold tracking-[0.16em] text-brand-light uppercase">Integrations</legend>
         <Field name="metaAdAccountIds" title="Meta ad account IDs" defaultValue={c?.metaAdAccountIds} placeholder="Comma separated" />
         <Field name="ghlLocationId" title="GoHighLevel location ID" defaultValue={c?.ghlLocationId} />
         {showBilling && <Field name="stripeCustomerId" title="Stripe customer ID" defaultValue={c?.stripeCustomerId} placeholder="cus_…" />}
@@ -65,7 +65,7 @@ export function ClientForm({ client, action, submitLabel, showBilling = true }: 
       </fieldset>
 
       <fieldset className="grid gap-4 sm:grid-cols-3">
-        <legend className="mb-2 text-sm font-semibold">Reporting</legend>
+        <legend className="mb-3 text-[11px] font-semibold tracking-[0.16em] text-brand-light uppercase">Reporting</legend>
         <Field name="cplTarget" title="CPL target" type="number" defaultValue={c?.cplTarget} />
         <Select name="reportCurrency" title="Report currency" value={c?.reportCurrency ?? "EUR"} options={[["EUR", "Euro (€)"], ["USD", "US dollar ($)"]]} />
         <Field name="reportGreeting" title="Report greeting" defaultValue={c?.reportGreeting ?? "Hi guys"} />
@@ -78,9 +78,9 @@ export function ClientForm({ client, action, submitLabel, showBilling = true }: 
       </fieldset>
 
       <fieldset className="grid gap-4">
-        <legend className="mb-2 text-sm font-semibold">Goals and notes</legend>
-        <textarea name="goals" rows={2} defaultValue={c?.goals ?? ""} className={input} placeholder="Revenue goal, jobs per month…" />
-        <textarea name="notes" rows={3} defaultValue={c?.notes ?? ""} className={input} placeholder="Anything the team or agents should know" />
+        <legend className="mb-3 text-[11px] font-semibold tracking-[0.16em] text-brand-light uppercase">Goals and notes</legend>
+        <textarea name="goals" aria-label="Goals" rows={2} defaultValue={c?.goals ?? ""} className={input} placeholder="Revenue goal, jobs per month…" />
+        <textarea name="notes" aria-label="Notes" rows={3} defaultValue={c?.notes ?? ""} className={input} placeholder="Anything the team or agents should know" />
       </fieldset>
 
       <SubmitButton className={btn}>{submitLabel}</SubmitButton>

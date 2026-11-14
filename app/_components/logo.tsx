@@ -9,7 +9,7 @@ export function Logo({ sub }: { sub?: string }) {
   return (
     <span className="flex items-center gap-3">
       <LogoMark className="h-11" />
-      {sub && <span className="text-[10px] leading-tight font-semibold tracking-[0.22em] text-ink/45 uppercase">{sub}</span>}
+      {sub && <span className="text-[10px] leading-tight font-semibold tracking-[0.22em] text-muted uppercase">{sub}</span>}
     </span>
   );
 }
