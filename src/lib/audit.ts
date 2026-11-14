@@ -16,7 +16,15 @@ export type AuditAction =
   | "user.create"
   | "user.update"
   | "user.reset_password"
-  | "user.change_password";
+  | "user.change_password"
+  | "file.upload"
+  | "file.rename"
+  | "file.move"
+  | "file.delete"
+  | "folder.create"
+  | "folder.rename"
+  | "folder.move"
+  | "folder.delete";
 
 /** Writes one audit row. Never throws: a failed audit write must not break the action itself. */
 export async function audit(

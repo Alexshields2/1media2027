@@ -22,6 +22,7 @@ const GROUPS: { title?: string; links: L[] }[] = [
       { href: "/tasks", label: "Tasks", icon: "check" },
       { href: "/health", label: "Client health", icon: "pulse" },
       { href: "/reports", label: "Reports", icon: "doc" },
+      { href: "/files", label: "Files", icon: "folder" },
     ],
   },
   {

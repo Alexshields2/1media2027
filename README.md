@@ -12,6 +12,7 @@ The operating system for 1Media: clients, cash, delivery and the AI agents that 
 | **Tasks** | Board (to do / in progress / review / done), filtered by client. Agents add tasks too |
 | **Client health** | Weekly traffic light per client, scored from the numbers (CPL vs target, lead volume vs the previous 4 weeks, creative fatigue, GHL leads untouched over 24h) with the reason for each, and a 6-week history |
 | **Reports** | Per-client week view: spend, leads, CPL, impressions, clicks and CTR with week-on-week change, the WhatsApp-ready text (copy for WhatsApp, mark sent), and a run-status strip with a Retry button per client. Month-end view with a PDF per client (download, or saved to the client's Drive folder) |
+| **Files** | Google Drive-style storage on Supabase: nested folders, drag-and-drop upload, rename, move, delete, search across everything, preview images/PDFs/video. Every client gets its own folder (Files / Clients / name), opened from the client page, which also lists the client's latest files |
 | **Approvals** | Anything an agent wants to send, charge or change outside the OS waits here. Approve runs it; reject drops it |
 | **Agents** | Run any agent now (dry run by default) and read every run's summary and tool calls |
 | **Settings** | People and roles (owner / team), password resets, integration status, audit log |
@@ -57,6 +58,7 @@ Agents use Claude (Anthropic API). They reach Gmail, Calendar, Drive, Meta Ads, 
 **Preview deploys** never touch the production database: when `VERCEL_ENV=preview`, the app and the build's migrations only use `PREVIEW_DATABASE_URL` (and skip if it isn't set).
 
 **Optional, any time later** (Settings → Environment Variables, then redeploy):
+- `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` turn on **Files**. Both are in Supabase → Project Settings → API (Project URL, and the `service_role` secret). The private bucket `1media-files` is created on the first upload. Files go straight from the browser to Supabase, so there's no Vercel size limit; Supabase's own per-file limit applies (50 MB on the Free plan, configurable on Pro under Storage → Settings).
 - `COMPOSIO_API_KEY` connects Gmail, Calendar, Meta Ads, GoHighLevel and Stripe for the agents. After adding it, run `npm run connect` and open each login link.
 - `STRIPE_WEBHOOK_SECRET` records Stripe payments automatically. In Stripe → Developers → Webhooks, add the endpoint `https://<your-app>.vercel.app/api/webhooks/stripe` with the events `invoice.paid`, `invoice.payment_succeeded`, `invoice.updated`, `invoice.payment_failed` and `charge.refunded`, and copy its signing secret (`whsec_…`). Put each client's Stripe customer ID (`cus_…`) on the client so payments match by customer.
 - `SLACK_WEBHOOK_URL` sends agent summaries and approval alerts to Slack.

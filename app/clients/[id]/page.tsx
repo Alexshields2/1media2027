@@ -6,6 +6,7 @@ import { amountDue, paymentState } from "@/lib/billing";
 import { can } from "@/lib/roles";
 import { eur, monthLabel } from "@/lib/dates";
 import { setupProgress } from "@/lib/setup";
+import { formatBytes } from "@/lib/files";
 import { updateClient } from "../../actions";
 import { Badge, Card, Empty } from "../../_components/ui";
 import { ClientForm } from "../client-form";
@@ -26,7 +27,7 @@ export default async function ClientPage({ params, searchParams }: { params: Pro
   const [client] = await db.select().from(schema.clients).where(eq(schema.clients.id, id));
   if (!client) notFound();
 
-  const [payments, tasks, health, reports, briefs, [prepRun]] = await Promise.all([
+  const [payments, tasks, health, reports, briefs, [prepRun], clientFiles] = await Promise.all([
     can(user.role, "payments") ? db.select().from(schema.payments).where(eq(schema.payments.clientId, id)).orderBy(desc(schema.payments.period)).limit(12) : Promise.resolve(null),
     db.select().from(schema.tasks).where(eq(schema.tasks.clientId, id)).orderBy(desc(schema.tasks.createdAt)).limit(15),
     db.select().from(schema.healthChecks).where(eq(schema.healthChecks.clientId, id)).orderBy(desc(schema.healthChecks.weekOf)).limit(8),
@@ -38,6 +39,7 @@ export default async function ClientPage({ params, searchParams }: { params: Pro
       .where(and(eq(schema.agentRuns.agent, "meetings"), like(schema.agentRuns.instruction, `%(client_id ${id})%`)))
       .orderBy(desc(schema.agentRuns.startedAt))
       .limit(1),
+    db.select().from(schema.files).where(eq(schema.files.clientId, id)).orderBy(desc(schema.files.createdAt)).limit(6),
   ]);
   const callPrep = briefs.find((b) => b.kind === "call_prep");
   const inboxNotes = briefs.filter((b) => b.kind === "inbox").slice(0, 3);
@@ -100,6 +102,27 @@ export default async function ClientPage({ params, searchParams }: { params: Pro
         <div className="space-y-6 lg:col-span-2">
           <CallPrepCard clientId={id} brief={callPrep} lastRun={prepRun} started={prepStarted} />
           <InboxNotesCard notes={inboxNotes} />
+          <Card
+            title="Files"
+            actions={
+              <a href={`/files/client/${id}`} className="rounded-full border border-line px-3 py-1 text-xs hover:border-brand/50">
+                Open folder
+              </a>
+            }
+          >
+            {clientFiles.length ? (
+              <ul className="divide-y divide-line/70 text-sm">
+                {clientFiles.map((f) => (
+                  <li key={f.id} className="flex items-center justify-between gap-3 py-2">
+                    <a href={`/files/open/${f.id}`} className="min-w-0 truncate hover:text-brand-light">{f.name}</a>
+                    <span className="shrink-0 text-xs text-ink/40">{formatBytes(f.size)}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <Empty>No files yet. Open the folder to upload contracts, creatives and reports.</Empty>
+            )}
+          </Card>
           <details id="details" open={!setup.complete} className="group rounded-2xl border border-line bg-panel">
             <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3 text-sm font-semibold">
               Client details & settings

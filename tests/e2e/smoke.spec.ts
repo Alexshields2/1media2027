@@ -8,6 +8,7 @@ const PAGES: { path: string; heading: RegExp }[] = [
   { path: "/tasks", heading: /^Tasks$/ },
   { path: "/health", heading: /^Client health$/ },
   { path: "/reports", heading: /^Reports$/ },
+  { path: "/files", heading: /^Files$/ },
   { path: "/approvals", heading: /^Approvals$/ },
   { path: "/agents", heading: /^Agents$/ },
 ];

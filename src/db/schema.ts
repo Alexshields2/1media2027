@@ -1,5 +1,6 @@
 import {
-  pgTable, serial, text, integer, numeric, date, timestamp, boolean, jsonb, uniqueIndex, index,
+  pgTable, serial, text, integer, bigint, numeric, date, timestamp, boolean, jsonb, uniqueIndex, index,
+  type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 
 const money = (name: string) => numeric(name, { precision: 12, scale: 2, mode: "number" });
@@ -339,6 +340,39 @@ export const briefs = pgTable(
   (t) => [index("briefs_client").on(t.clientId, t.createdAt)],
 );
 
+// ---------- files (Drive-style storage; the bytes live in Supabase Storage) ----------
+
+/** Folders nest like Google Drive. A folder can belong to a client; everything inside it does too. */
+export const fileFolders = pgTable(
+  "file_folders",
+  {
+    id: serial("id").primaryKey(),
+    name: text("name").notNull(),
+    parentId: integer("parent_id").references((): AnyPgColumn => fileFolders.id, { onDelete: "cascade" }),
+    clientId: integer("client_id").references(() => clients.id, { onDelete: "set null" }),
+    createdBy: integer("created_by").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("file_folders_parent").on(t.parentId), index("file_folders_client").on(t.clientId)],
+);
+
+/** One row per stored file. storagePath never changes, so renaming or moving is a database update only. */
+export const files = pgTable(
+  "files",
+  {
+    id: serial("id").primaryKey(),
+    name: text("name").notNull(),
+    folderId: integer("folder_id").references(() => fileFolders.id, { onDelete: "cascade" }),
+    clientId: integer("client_id").references(() => clients.id, { onDelete: "set null" }),
+    storagePath: text("storage_path").notNull(),
+    mimeType: text("mime_type"),
+    size: bigint("size", { mode: "number" }).notNull().default(0),
+    uploadedBy: integer("uploaded_by").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("files_storage_path").on(t.storagePath), index("files_folder").on(t.folderId), index("files_client").on(t.clientId)],
+);
+
 export interface HealthSignalRow {
   key: string;
   label: string;
@@ -386,3 +420,5 @@ export type AuditEntry = typeof auditLog.$inferSelect;
 export type IncomingPayment = typeof incomingPayments.$inferSelect;
 export type CashSummary = typeof cashSummaries.$inferSelect;
 export type Brief = typeof briefs.$inferSelect;
+export type FileFolder = typeof fileFolders.$inferSelect;
+export type StoredFile = typeof files.$inferSelect;
