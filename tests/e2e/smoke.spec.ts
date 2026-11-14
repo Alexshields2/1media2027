@@ -10,6 +10,7 @@ const PAGES: { path: string; heading: RegExp }[] = [
   { path: "/reports", heading: /^Reports$/ },
   { path: "/approvals", heading: /^Approvals$/ },
   { path: "/agents", heading: /^Agents$/ },
+  { path: "/settings", heading: /^Settings$/ },
 ];
 
 function collectErrors(page: Page): string[] {

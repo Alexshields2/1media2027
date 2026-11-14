@@ -2,12 +2,13 @@ import Link from "next/link";
 import { desc } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { runState, runTone } from "@/lib/runs";
+import { modelReady } from "@/lib/runner";
 import { AGENT_LIST } from "@/agents/registry";
 import { canRunAgent } from "@/lib/roles";
 import { composioEnabled } from "@/lib/composio";
 import { runAgentAction } from "../actions";
 import { Badge, Card, Empty, PageHeader, btn, input } from "../_components/ui";
-import { SubmitButton } from "../_components/client-bits";
+import { AutoRefresh, SubmitButton } from "../_components/client-bits";
 import { requireUser } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
@@ -24,7 +25,8 @@ export default async function AgentsPage({ searchParams }: { searchParams: Promi
   const user = await requireUser();
   const sp = await searchParams;
   const runs = await db.select().from(schema.agentRuns).orderBy(desc(schema.agentRuns.startedAt)).limit(25);
-  const apiReady = !!process.env.ANTHROPIC_API_KEY;
+  const apiReady = modelReady();
+  const anyRunning = runs.some((r) => runState(r) === "running");
   const appsReady = composioEnabled();
 
   return (
@@ -34,7 +36,7 @@ export default async function AgentsPage({ searchParams }: { searchParams: Promi
       {sp.notice === "nokey" && (
         <div className="mb-4 rounded-lg bg-amber-500/10 px-4 py-3 text-sm text-amber-200">Nothing was run: add ANTHROPIC_API_KEY in Vercel (Settings → Environment Variables), then redeploy.</div>
       )}
-      {sp.started && <div className="mb-4 rounded-lg bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">Started {sp.started}. It will appear under Recent runs; refresh in a minute.</div>}
+      {sp.started && <div className="mb-4 rounded-lg bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">Started {sp.started}. It shows under Recent runs below and updates by itself; click it to follow along.</div>}
       {(!apiReady || !appsReady) && (
         <div className="mb-4 rounded-lg bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
           {!apiReady && <p>ANTHROPIC_API_KEY isn&rsquo;t set, so agents can&rsquo;t run yet.</p>}
@@ -75,6 +77,7 @@ export default async function AgentsPage({ searchParams }: { searchParams: Promi
         ))}
       </div>
 
+      {anyRunning && <AutoRefresh everyMs={3000} />}
       <Card title="Recent runs" className="mt-6">
         {runs.length ? (
           <ul className="divide-y divide-line/70 text-sm">
