@@ -6,7 +6,9 @@ import { addMonths, eur, today } from "@/lib/dates";
 import { composioEnabled } from "@/lib/composio";
 import { monthPeriod, pctChange, reportMonth, reportWeek, shiftWeek, weekPeriod, type Period } from "@/lib/report-metrics";
 import { retryFailedReportsAction, retryReportJobAction, runReportsAction, saveReportToDriveAction, setReportStatus, updateReportBody } from "../actions";
-import { Badge, Card, Empty, PageHeader, btn, btnBrand, btnGhost } from "../_components/ui";
+import { Badge, Card, Delta, Empty, Notice, PageHeader, Segmented, btn, btnBrand, btnGhost, btnLink, btnSm } from "../_components/ui";
+import { ClientLogo } from "../_components/client-logo";
+import { Icon } from "../_components/icons";
 import { SubmitButton, WhatsAppCopyButton } from "../_components/client-bits";
 import { requireUser } from "@/lib/session";
 import { modelReady } from "@/lib/runner";
@@ -88,40 +90,41 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
         title="Reports"
         subtitle={kind === "weekly" ? "Monday WhatsApp reports, one per client. Check the numbers, copy into WhatsApp, then mark sent." : "Month-end reports with a PDF for each client."}
         actions={
-          <div className="flex rounded-full border border-line bg-panel p-0.5 text-sm">
-            <Link href="/reports?view=week" className={`rounded-full px-3 py-1.5 ${kind === "weekly" ? "bg-brand-soft text-brand-light" : "text-ink/60 hover:text-ink"}`}>
-              Weekly
-            </Link>
-            <Link href="/reports?view=month" className={`rounded-full px-3 py-1.5 ${kind === "monthly" ? "bg-brand-soft text-brand-light" : "text-ink/60 hover:text-ink"}`}>
-              Month-end
-            </Link>
-          </div>
+          <Segmented
+            label="Report type"
+            items={[
+              { href: "/reports?view=week", label: "Weekly", active: kind === "weekly", icon: "calendar" },
+              { href: "/reports?view=month", label: "Month-end", active: kind === "monthly", icon: "doc" },
+            ]}
+          />
         }
       />
       {!modelReady() && (
-        <div className="mb-4 rounded-lg bg-amber-500/10 px-4 py-3 text-sm text-amber-200">Reports can't be written yet: add ANTHROPIC_API_KEY in Vercel (Settings → Environment Variables), then redeploy. The buttons below do nothing until then.</div>
+        <Notice tone="warn" title="Reports can’t be written yet">
+          Add ANTHROPIC_API_KEY in Vercel (Settings → Environment Variables), then redeploy. The buttons below do nothing until then.
+        </Notice>
       )}
 
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <Link href={href(prev)} className={btnGhost} aria-label="Previous">
-            ←
+          <Link href={href(prev)} className="grid size-9 place-items-center rounded-full border border-line bg-panel text-soft hover:border-brand/50 hover:text-white" aria-label={`Previous ${kind === "weekly" ? "week" : "month"}`}>
+            <Icon name="chevronLeft" />
           </Link>
-          <div className="px-2">
-            <div className="text-xs uppercase tracking-wide text-ink/50">{kind === "weekly" ? "Week" : "Month"}</div>
-            <div className="font-semibold">{kind === "weekly" ? `${period.label} ${period.end.slice(0, 4)}` : period.label}</div>
+          <div className="min-w-36 px-2 text-center">
+            <div className="text-[11px] font-semibold tracking-[0.14em] text-muted uppercase">{kind === "weekly" ? "Week" : "Month"}</div>
+            <div className="font-semibold text-white">{kind === "weekly" ? `${period.label} ${period.end.slice(0, 4)}` : period.label}</div>
           </div>
-          <Link href={href(next)} className={btnGhost} aria-label="Next">
-            →
+          <Link href={href(next)} className="grid size-9 place-items-center rounded-full border border-line bg-panel text-soft hover:border-brand/50 hover:text-white" aria-label={`Next ${kind === "weekly" ? "week" : "month"}`}>
+            <Icon name="chevronRight" />
           </Link>
           {period.period !== latest.period && (
-            <Link href={href(latest)} className="text-xs text-ink/50 underline hover:text-ink">
+            <Link href={href(latest)} className={`${btnLink} ml-1`}>
               Latest
             </Link>
           )}
         </div>
         {otherDraftPeriods.length > 0 && (
-          <p className="text-xs text-ink/50">
+          <p className="text-xs text-muted">
             Unsent drafts also in{" "}
             {otherDraftPeriods.slice(0, 3).map((p, i) => (
               <span key={p}>
@@ -137,6 +140,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
 
       <Card
         title="Run status"
+        description={`${kind === "weekly" ? "Runs Mondays 07:00 UTC" : "Runs on the 1st, 09:00 UTC"} · one job per client · failed jobs retry up to 3 times`}
         actions={
           <div className="flex flex-wrap items-center gap-2">
             {failed > 0 && (
@@ -156,15 +160,14 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
           </div>
         }
       >
-        <div className="mb-3 flex flex-wrap gap-3 text-xs text-ink/60">
+        <div className="mb-4 flex flex-wrap gap-2">
           {(["done", "running", "queued", "failed", "skipped", "not_started"] as JobState[])
             .filter((s) => counts[s])
             .map((s) => (
-              <span key={s} className="num">
-                {STATE[s].label}: <b className="text-ink">{counts[s]}</b>
-              </span>
+              <Badge key={s} tone={STATE[s].tone} dot>
+                <span className="num">{counts[s]}</span> {STATE[s].label}
+              </Badge>
             ))}
-          <span className="text-ink/40">{kind === "weekly" ? "Runs Mondays 07:00 UTC" : "Runs on the 1st, 09:00 UTC"} · one job per client · failed jobs retry up to 3 times</span>
         </div>
         {stripClients.length ? (
           <ul className="flex flex-wrap gap-2">
@@ -173,17 +176,18 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
               const j = jobByClient.get(c.id);
               const canRetry = j && (s === "failed" || s === "skipped" || s === "queued");
               return (
-                <li key={c.id} className="flex items-center gap-2 rounded-xl border border-line bg-canvas/60 py-1.5 pl-3 pr-1.5 text-sm" title={j?.lastError ?? undefined}>
-                  <a href={reportByClient.has(c.id) ? `#c${c.id}` : undefined} className={reportByClient.has(c.id) ? "hover:underline" : ""}>
+                <li key={c.id} className="flex items-center gap-2 rounded-xl border border-line bg-canvas/60 py-1.5 pr-1.5 pl-1.5 text-sm" title={j?.lastError ?? undefined}>
+                  <ClientLogo name={c.name} size={24} className="rounded-md" />
+                  <a href={reportByClient.has(c.id) ? `#c${c.id}` : undefined} className={reportByClient.has(c.id) ? "text-white hover:text-brand-light" : "text-soft"}>
                     {c.name}
                   </a>
-                  <Badge tone={STATE[s].tone}>
+                  <Badge tone={STATE[s].tone} dot>
                     {STATE[s].label}
                     {j && j.attempts > 1 ? ` · try ${j.attempts}` : ""}
                   </Badge>
                   {canRetry ? (
                     <form action={retryReportJobAction.bind(null, j.id)}>
-                      <SubmitButton className="rounded-full border border-line px-2.5 py-0.5 text-xs hover:border-brand/50" pendingText="…">
+                      <SubmitButton className={`${btnGhost} ${btnSm}`} pendingText="…">
                         Retry
                       </SubmitButton>
                     </form>
@@ -195,15 +199,15 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
             })}
           </ul>
         ) : (
-          <Empty>No active clients.</Empty>
+          <Empty icon="users" compact>No active clients.</Empty>
         )}
         {jobs.some((j) => j.lastError && (j.status === "failed" || j.status === "skipped")) && (
-          <ul className="mt-3 space-y-1 text-xs text-ink/50">
+          <ul className="mt-3 space-y-1 text-xs text-muted">
             {jobs
               .filter((j) => j.lastError && (j.status === "failed" || j.status === "skipped"))
               .map((j) => (
                 <li key={j.id}>
-                  <span className="text-ink/70">{stripClients.find((c) => c.id === j.clientId)?.name}:</span> {j.lastError?.slice(0, 220)}
+                  <span className="text-soft">{stripClients.find((c) => c.id === j.clientId)?.name}:</span> {j.lastError?.slice(0, 220)}
                   {j.runId ? (
                     <>
                       {" "}
@@ -223,9 +227,8 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
           reports.map(({ r, client }) => <ReportCard key={r.id} r={r} client={client} prev={prevByClient.get(client.id)} kind={kind} driveReady={driveReady} />)
         ) : (
           <Card>
-            <Empty>
-              No {kind === "weekly" ? "weekly" : "month-end"} reports for {period.label} yet.{" "}
-              {period.period === latest.period && today() >= period.end ? "Run them above, or wait for the scheduled run." : ""}
+            <Empty icon="doc" title={`No ${kind === "weekly" ? "weekly" : "month-end"} reports for ${period.label} yet`}>
+              {period.period === latest.period && today() >= period.end ? "Run them above, or wait for the scheduled run." : "Reports appear here once the run for this period finishes."}
             </Empty>
           </Card>
         )}
@@ -235,18 +238,13 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
 }
 
 function Num({ label, value, delta, goodWhenDown, hint }: { label: string; value: string; delta?: number | null; goodWhenDown?: boolean; hint?: string }) {
-  const good = delta != null && delta !== 0 && (goodWhenDown ? delta < 0 : delta > 0);
   return (
-    <div className="rounded-xl border border-line bg-canvas/60 px-3 py-2">
-      <div className="text-[11px] font-medium uppercase tracking-wide text-ink/50">{label}</div>
-      <div className="num mt-0.5 text-lg font-semibold">{value}</div>
-      <div className="num h-4 text-[11px] text-ink/50">
-        {delta != null && delta !== 0 ? (
-          <span className={good ? "text-emerald-400" : "text-red-400"}>
-            {delta > 0 ? "▲" : "▼"} {Math.abs(delta)}%
-          </span>
-        ) : null}
-        {hint ? <span className="ml-1">{hint}</span> : null}
+    <div className="rounded-xl border border-line bg-canvas/60 px-3 py-2.5">
+      <div className="text-[10px] font-semibold tracking-[0.12em] text-muted uppercase">{label}</div>
+      <div className="num mt-1 text-lg font-semibold text-white">{value}</div>
+      <div className="mt-0.5 flex min-h-5 flex-wrap items-center gap-1 text-[11px] text-muted">
+        <Delta pct={delta ?? null} goodWhen={goodWhenDown ? "down" : "up"} />
+        {hint ? <span>{hint}</span> : null}
       </div>
     </div>
   );
@@ -260,11 +258,20 @@ function ReportCard({ r, client, prev, kind, driveReady }: { r: Report; client: 
   return (
     <section id={`c${client.id}`} className="scroll-mt-4">
       <Card
-        title={client.name}
+        title={
+          <span className="flex items-center gap-3">
+            <ClientLogo name={client.name} size={32} className="rounded-lg" />
+            <Link href={`/clients/${client.id}`} className="hover:text-brand-light">
+              {client.name}
+            </Link>
+          </span>
+        }
         actions={
           <div className="flex items-center gap-2">
-            {r.status === "sent" && r.sentAt && <span className="text-xs text-ink/50">sent {r.sentAt.toLocaleDateString("en-IE", { timeZone: "Europe/Dublin", day: "numeric", month: "short" })}</span>}
-            <Badge tone={r.status === "sent" ? "green" : "yellow"}>{r.status}</Badge>
+            {r.status === "sent" && r.sentAt && <span className="text-xs text-muted">sent {r.sentAt.toLocaleDateString("en-IE", { timeZone: "Europe/Dublin", day: "numeric", month: "short" })}</span>}
+            <Badge tone={r.status === "sent" ? "green" : "yellow"} dot>
+              {r.status}
+            </Badge>
           </div>
         }
       >
@@ -276,23 +283,23 @@ function ReportCard({ r, client, prev, kind, driveReady }: { r: Report; client: 
           <Num label="Link clicks" value={fmtInt(r.clicks)} delta={pctChange(r.clicks, prev?.clicks)} />
           <Num label="CTR" value={r.ctr == null ? "–" : `${r.ctr.toFixed(2)}%`} delta={pctChange(r.ctr, prev?.ctr)} />
         </div>
-        {prev && <p className="mt-1 text-[11px] text-ink/40">Changes are against the previous {kind === "weekly" ? "week" : "month"}.</p>}
+        {prev && <p className="mt-2 text-[11px] text-muted">Changes are against the previous {kind === "weekly" ? "week" : "month"}.</p>}
 
         {kind === "monthly" && (
           <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
             <a href={`/reports/${r.id}/pdf`} className={btn}>
-              Download PDF
+              <Icon name="download" /> Download PDF
             </a>
             {r.driveUrl ? (
               <a href={r.driveUrl} target="_blank" rel="noreferrer" className={btnGhost}>
                 Open in Drive
               </a>
             ) : (
-              <span className="text-xs text-ink/50">{r.driveError ?? "Not in Drive yet."}</span>
+              <span className="text-xs text-muted">{r.driveError ?? "Not in Drive yet."}</span>
             )}
             {driveReady && client.driveFolderId && (
               <form action={saveReportToDriveAction.bind(null, r.id)}>
-                <SubmitButton className="text-xs text-ink/50 underline hover:text-ink" pendingText="Saving…">
+                <SubmitButton className="text-xs text-muted underline hover:text-ink" pendingText="Saving…">
                   {r.driveUrl ? "Save again to Drive" : "Save to Drive"}
                 </SubmitButton>
               </form>
@@ -301,7 +308,10 @@ function ReportCard({ r, client, prev, kind, driveReady }: { r: Report; client: 
         )}
 
         <form action={updateReportBody.bind(null, r.id)} className="mt-3">
-          <textarea id={taId} name="body" defaultValue={r.body} rows={Math.min(22, r.body.split("\n").length + 1)} className="w-full rounded-md border border-line bg-ink/[0.02] p-3 font-mono text-[13px] leading-relaxed outline-none focus:border-brand" />
+          <label htmlFor={taId} className="sr-only">
+            Report text for {client.name}
+          </label>
+          <textarea id={taId} name="body" defaultValue={r.body} rows={Math.min(22, r.body.split("\n").length + 1)} className="w-full rounded-xl border border-line bg-canvas/70 p-4 font-mono text-[13px] leading-relaxed text-soft transition-colors outline-none hover:border-line-strong focus:border-brand focus:ring-2 focus:ring-brand/25" />
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <WhatsAppCopyButton textareaId={taId} className={btn} />
             <SubmitButton className={btnGhost}>Save edits</SubmitButton>
@@ -310,9 +320,11 @@ function ReportCard({ r, client, prev, kind, driveReady }: { r: Report; client: 
         </form>
         <form action={setReportStatus.bind(null, r.id, r.status === "sent" ? "draft" : "sent")} className="mt-2">
           {r.status === "sent" ? (
-            <button className="text-xs text-ink/50 underline hover:text-ink">Mark as draft</button>
+            <button className={btnLink}>Mark as draft</button>
           ) : (
-            <SubmitButton className="rounded-full border border-emerald-400/30 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-300 hover:bg-emerald-500/20">Mark sent</SubmitButton>
+            <SubmitButton className="inline-flex items-center gap-1 rounded-full border border-emerald-400/30 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-300 transition-colors hover:bg-emerald-500/20">
+              <Icon name="check" className="size-3.5" /> Mark sent
+            </SubmitButton>
           )}
         </form>
       </Card>

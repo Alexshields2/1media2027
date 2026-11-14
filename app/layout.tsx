@@ -22,16 +22,20 @@ async function pendingApprovals() {
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
+  const pending = user ? await pendingApprovals() : 0;
   const date = new Date().toLocaleDateString("en-IE", { timeZone: "Europe/Dublin", weekday: "short", day: "numeric", month: "short" });
   return (
     <html lang="en">
       <body className="min-h-screen antialiased">
         {user ? (
           <div className="flex min-h-screen flex-col md:flex-row">
-            <Nav user={{ name: user.name, role: user.role }} />
+            <a href="#main" className="sr-only z-50 rounded-full bg-white px-4 py-2 text-sm font-medium text-[#020617] focus:not-sr-only focus:fixed focus:top-3 focus:left-3">
+              Skip to content
+            </a>
+            <Nav user={{ name: user.name, role: user.role }} pending={pending} />
             <div className="flex min-w-0 flex-1 flex-col">
-              <TopBar pending={await pendingApprovals()} date={date} />
-              <main className="min-w-0 flex-1 px-4 py-6 md:px-8 md:py-8">
+              <TopBar pending={pending} date={date} />
+              <main id="main" className="min-w-0 flex-1 px-4 py-6 sm:px-6 md:px-8 md:py-8">
                 <div className="mx-auto max-w-7xl">{children}</div>
               </main>
             </div>

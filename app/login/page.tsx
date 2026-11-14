@@ -17,7 +17,7 @@ export default async function LoginPage() {
   return (
     <AuthCard>
       {mode === "closed" ? (
-        <p className="text-center text-sm text-ink/60">No accounts yet. Set ADMIN_PASSWORD (and ideally OWNER_EMAIL) on the server, then come back to create the first owner.</p>
+        <p className="text-center text-sm text-soft">No accounts yet. Set ADMIN_PASSWORD (and ideally OWNER_EMAIL) on the server, then come back to create the first owner.</p>
       ) : (
         <LoginForm firstRun={mode !== "accounts"} />
       )}

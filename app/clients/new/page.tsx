@@ -10,8 +10,8 @@ export default async function NewClientPage() {
   const user = await requireUser();
   return (
     <>
-      <PageHeader title="Add client" subtitle="Billing rows are created automatically from the retainer each month." />
-      <Card>
+      <PageHeader eyebrow="Clients" title="Add client" subtitle="Billing rows are created automatically from the retainer each month." />
+      <Card className="max-w-4xl">
         <ClientForm action={createClient} submitLabel="Create client" showBilling={can(user.role, "client_billing")} />
       </Card>
     </>

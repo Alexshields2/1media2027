@@ -14,6 +14,11 @@
   --color-panel: #061126;
   --color-canvas: #020617;
   --color-sidebar: #030c1d;
+  /* Solid secondary text colours, picked to pass WCAG AA (4.5:1) on both canvas and panel. */
+  --color-soft: #b9c6d9;
+  --color-muted: #8b9cb5;
+  --color-panel-2: #0a1830;
+  --color-line-strong: #1d3762;
 }
 
 :root {
@@ -27,6 +32,81 @@ body {
 
 .num {
   font-variant-numeric: tabular-nums;
+}
+
+/* Visible keyboard focus everywhere, in the brand blue. Mouse clicks don't show it. */
+:focus-visible {
+  outline: 2px solid #38c4fa;
+  outline-offset: 2px;
+}
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline-offset: 0;
+}
+
+::selection {
+  background: rgb(4 153 242 / 0.35);
+}
+
+/* Thin, quiet scrollbars for the boards and tables that scroll inside their card. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-line-strong) transparent;
+}
+
+/* Subtle top highlight on raised surfaces, like the site's cards. */
+.surface {
+  background-image: linear-gradient(180deg, rgb(255 255 255 / 0.025), transparent 40%);
+}
+
+/* Glowing traffic-light dots */
+.glow-green {
+  background: #34d399;
+  box-shadow: 0 0 10px rgb(52 211 153 / 0.85);
+}
+.glow-yellow {
+  background: #fbbf24;
+  box-shadow: 0 0 10px rgb(251 191 36 / 0.85);
+}
+.glow-red {
+  background: #f87171;
+  box-shadow: 0 0 10px rgb(248 113 113 / 0.9);
+}
+
+/* Loading skeletons */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+.skeleton {
+  border-radius: 0.5rem;
+  background: linear-gradient(90deg, rgb(238 244 251 / 0.04) 25%, rgb(238 244 251 / 0.09) 50%, rgb(238 244 251 / 0.04) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.6s ease-in-out infinite;
+}
+
+/* Hide the scrollbar on the phone nav strip; it still scrolls. */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 .brand-gradient {
@@ -59,6 +139,11 @@ body {
 
 input[type="checkbox"] {
   accent-color: var(--color-brand);
+}
+
+/* Native date pickers: light icon on the dark field */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.75);
 }
 
 select option {

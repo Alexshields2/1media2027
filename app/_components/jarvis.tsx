@@ -93,7 +93,7 @@ export function JarvisBox({ suggestions, initial, apiReady }: { suggestions: str
           ask(question);
         }}
       >
-        <div className="flex items-center gap-2 rounded-2xl border border-line bg-panel p-2 pl-4 shadow-[0_0_40px_rgb(4_153_242/0.10)] focus-within:border-brand/60">
+        <div className="flex items-center gap-2 rounded-2xl border border-line bg-panel p-2 pl-4 shadow-[0_0_40px_rgb(4_153_242/0.10)] transition focus-within:border-brand/60 focus-within:shadow-[0_0_50px_rgb(4_153_242/0.22)]">
           <Icon name="spark" className="size-4 shrink-0 text-brand-light" />
           <input
             ref={inputRef}
@@ -104,13 +104,13 @@ export function JarvisBox({ suggestions, initial, apiReady }: { suggestions: str
             maxLength={2000}
             placeholder="Ask Jarvis anything…"
             aria-label="Ask Jarvis"
-            className="min-w-0 flex-1 bg-transparent py-2 text-sm outline-none placeholder:text-ink/35"
+            className="min-w-0 flex-1 bg-transparent py-2 text-sm outline-none placeholder:text-muted focus-visible:outline-none"
           />
           <button
             type="submit"
             disabled={sending || !question.trim()}
             aria-label="Ask"
-            className="brand-gradient grid size-9 shrink-0 place-items-center rounded-full text-white shadow-[0_0_18px_rgb(4_153_242/0.5)] disabled:opacity-50"
+            className="brand-gradient grid size-9 shrink-0 place-items-center rounded-full text-white shadow-[0_0_18px_rgb(4_153_242/0.5)] transition hover:brightness-110 disabled:opacity-50"
           >
             <Icon name="send" className="size-4" />
           </button>
@@ -124,14 +124,14 @@ export function JarvisBox({ suggestions, initial, apiReady }: { suggestions: str
             type="button"
             disabled={sending}
             onClick={() => ask(s)}
-            className="rounded-full border border-line bg-panel px-3 py-1.5 text-xs text-ink/60 hover:border-brand/40 hover:text-ink disabled:opacity-50"
+            className="rounded-full border border-line bg-panel px-3 py-1.5 text-xs text-soft transition-colors hover:border-brand/40 hover:text-white disabled:opacity-50"
           >
             {s}
           </button>
         ))}
       </div>
       {!apiReady && (
-        <p className="mt-6 text-center text-xs text-amber-300/80">Jarvis can&rsquo;t answer until ANTHROPIC_API_KEY is added in Vercel.</p>
+        <p className="mt-6 text-center text-xs text-amber-300">Jarvis can&rsquo;t answer until ANTHROPIC_API_KEY is added in Vercel.</p>
       )}
 
       {items.length > 0 && (
@@ -151,9 +151,9 @@ function Answer({ item, open, onToggle }: { item: JarvisItem; open: boolean; onT
   const show = open || pending;
   return (
     <li className={`rounded-2xl border bg-panel/80 text-left ${failed ? "border-red-400/30" : "border-line"}`} data-status={item.status}>
-      <button type="button" onClick={onToggle} className="flex w-full items-start gap-3 px-4 py-3 text-left">
+      <button type="button" onClick={onToggle} aria-expanded={show} className="flex w-full items-start gap-3 rounded-2xl px-4 py-3 text-left">
         <span className="min-w-0 flex-1 text-sm font-medium">{item.question}</span>
-        <span className="shrink-0 pt-0.5 text-[11px] text-ink/40" suppressHydrationWarning>
+        <span className="shrink-0 pt-0.5 text-[11px] text-muted" suppressHydrationWarning>
           {pending ? "" : failed ? <span className="text-red-300">failed</span> : when(item.startedAt)}
         </span>
       </button>
@@ -166,10 +166,10 @@ function Answer({ item, open, onToggle }: { item: JarvisItem; open: boolean; onT
           ) : item.answer ? (
             <Markdown>{item.answer}</Markdown>
           ) : (
-            <p className="text-sm text-ink/50">No answer was saved for this run.</p>
+            <p className="text-sm text-muted">No answer was saved for this run.</p>
           )}
           {item.runId && !pending && (
-            <Link href={`/agents/runs/${item.runId}`} className="mt-3 inline-flex items-center gap-1 text-xs text-ink/40 hover:text-brand-light">
+            <Link href={`/agents/runs/${item.runId}`} className="mt-3 inline-flex items-center gap-1 text-xs text-muted hover:text-brand-light">
               How Jarvis worked this out <Icon name="arrow" className="size-3" />
             </Link>
           )}
@@ -187,13 +187,13 @@ function Thinking({ item }: { item: JarvisItem }) {
   }, []);
   const secs = Math.max(0, Math.round((now - Date.parse(item.startedAt)) / 1000));
   return (
-    <p className="flex items-center gap-2 text-sm text-ink/60" role="status">
+    <p className="flex items-center gap-2 text-sm text-soft" role="status">
       <span className="thinking" aria-hidden>
         <span />
         <span />
         <span />
       </span>
-      Jarvis is thinking… <span className="num text-xs text-ink/40" suppressHydrationWarning>{secs}s{item.toolCalls ? ` · ${item.toolCalls} lookups` : ""}</span>
+      Jarvis is thinking… <span className="num text-xs text-muted" suppressHydrationWarning>{secs}s{item.toolCalls ? ` · ${item.toolCalls} lookups` : ""}</span>
     </p>
   );
 }

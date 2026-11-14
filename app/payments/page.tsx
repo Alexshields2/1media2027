@@ -17,13 +17,17 @@ import {
   saveCashSummaryAction,
 } from "../actions";
 import { can } from "@/lib/roles";
-import { Badge, Card, Empty, NoAccess, PageHeader, Stat, Table, btn, btnGhost, field, input } from "../_components/ui";
+import { Badge, Card, Empty, NoAccess, Notice, PageHeader, Progress, Table, btn, btnGhost, btnLink, btnSm, field, input, td, tdNum } from "../_components/ui";
+import { ClientLogo } from "../_components/client-logo";
+import { Icon } from "../_components/icons";
 import { SubmitButton } from "../_components/client-bits";
 import { requireUser } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
 const STATE_TONE: Record<string, string> = { paid: "green", part: "yellow", overdue: "red", due: "yellow", upcoming: "gray" };
+const STATE_LABEL: Record<string, string> = { paid: "Paid", part: "Part paid", overdue: "Overdue", due: "Due today", upcoming: "Upcoming" };
+const BUCKET_COLOR: Record<string, string> = { "0-14": "bg-brand-light", "15-30": "bg-amber-400", "31-60": "bg-orange-500", "60+": "bg-red-500" };
 const BUCKET_TONE: Record<string, "bad" | undefined> = { "31-60": "bad", "60+": "bad" };
 
 const shortMonth = (period: string) => monthLabel(period).replace(/^(\w{3})\w*/, "$1");
@@ -58,73 +62,123 @@ export default async function PaymentsPage({ searchParams }: { searchParams: Pro
   const collected = round2(rows.reduce((s, r) => s + r.p.amountCollected, 0));
   const rowLabel = (r: (typeof open)[number]) => `${r.clientName} · ${shortMonth(r.period)}${r.label && r.label !== "Retainer" ? ` ${r.label}` : ""} · ${eur(round2(r.amountDue - r.amountCollected))}`;
 
+  const outstanding = round2(due - collected);
+  const states = rows.map(({ p }) => paymentState(p));
+  const nPaid = states.filter((x) => x === "paid").length;
+  const nLate = states.filter((x) => x === "overdue").length;
+  const nPart = states.filter((x) => x === "part").length;
+  const agingMax = Math.max(rec.total, 0.01);
+
   return (
     <>
       <PageHeader
         title="Payments"
-        subtitle={monthLabel(period)}
+        subtitle="Retainers per month, money in from Stripe and the bank, and who owes what."
         actions={
-          <>
-            <Link className={btnGhost} href={`/payments?month=${addMonths(period, -1).slice(0, 7)}`}>
-              ← Prev
-            </Link>
-            <Link className={btnGhost} href={`/payments?month=${addMonths(period, 1).slice(0, 7)}`}>
-              Next →
-            </Link>
-            <form action={generateMonthAction}>
-              <input type="hidden" name="month" value={month} />
-              <SubmitButton className={btn}>Generate {monthLabel(period).split(" ")[0]} rows</SubmitButton>
-            </form>
-          </>
+          <form action={generateMonthAction}>
+            <input type="hidden" name="month" value={month} />
+            <SubmitButton className={btnGhost}>
+              <Icon name="plus" /> Generate {monthLabel(period).split(" ")[0]} rows
+            </SubmitButton>
+          </form>
         }
       />
 
-      {sp.imported && <p className="mb-4 rounded-xl border border-brand/30 bg-brand-soft px-4 py-3 text-sm">{sp.imported}</p>}
-      {sp.error && <p className="mb-4 rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">{sp.error}</p>}
+      {sp.imported && <Notice tone="info">{sp.imported}</Notice>}
+      {sp.error && <Notice tone="error">{sp.error}</Notice>}
 
-      <div className="mb-6 grid gap-3 sm:grid-cols-3">
-        <Stat label="Due" value={eur(due)} />
-        <Stat label="Collected" value={eur(collected)} tone="good" />
-        <Stat label="Outstanding" value={eur(round2(due - collected))} tone={due - collected > 0 ? "bad" : undefined} />
-      </div>
+      {/* Month header: navigation, collected vs outstanding */}
+      <section className="surface relative mb-6 overflow-hidden rounded-3xl border border-line bg-panel">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(50%_120%_at_0%_0%,rgb(4_153_242/0.16),transparent_60%)]" />
+        <div className="relative p-5 sm:p-7">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <Link className="grid size-9 place-items-center rounded-full border border-line bg-canvas/60 text-soft hover:border-brand/50 hover:text-white" href={`/payments?month=${addMonths(period, -1).slice(0, 7)}`} aria-label="Previous month">
+                <Icon name="chevronLeft" />
+              </Link>
+              <h2 className="min-w-40 text-center text-lg font-semibold text-white">{monthLabel(period)}</h2>
+              <Link className="grid size-9 place-items-center rounded-full border border-line bg-canvas/60 text-soft hover:border-brand/50 hover:text-white" href={`/payments?month=${addMonths(period, 1).slice(0, 7)}`} aria-label="Next month">
+                <Icon name="chevronRight" />
+              </Link>
+              {period !== monthStart() && (
+                <Link href="/payments" className={`${btnLink} ml-1`}>
+                  This month
+                </Link>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              <Badge tone="green" dot>{nPaid} paid</Badge>
+              {nPart > 0 && <Badge tone="yellow" dot>{nPart} part paid</Badge>}
+              {nLate > 0 && <Badge tone="red" dot>{nLate} overdue</Badge>}
+            </div>
+          </div>
+          <div className="mt-6 grid grid-cols-2 gap-5 sm:grid-cols-3">
+            <div>
+              <div className="text-[11px] font-semibold tracking-[0.12em] text-muted uppercase">Collected</div>
+              <div className="num mt-1 text-2xl font-semibold tracking-tight sm:text-3xl text-emerald-300">{eur(collected)}</div>
+              <div className="mt-0.5 text-xs text-muted">{due ? Math.round((collected / due) * 100) : 0}% of the month</div>
+            </div>
+            <div>
+              <div className="text-[11px] font-semibold tracking-[0.12em] text-muted uppercase">Outstanding</div>
+              <div className={`num mt-1 text-2xl font-semibold tracking-tight sm:text-3xl ${outstanding > 0 ? "text-white" : "text-emerald-300"}`}>{eur(outstanding)}</div>
+              <div className="mt-0.5 text-xs text-muted">{rows.length - nPaid} of {rows.length} rows open</div>
+            </div>
+            <div>
+              <div className="text-[11px] font-semibold tracking-[0.12em] text-muted uppercase">Billed</div>
+              <div className="num mt-1 text-2xl font-semibold tracking-tight sm:text-3xl text-white">{eur(due)}</div>
+              <div className="mt-0.5 text-xs text-muted">incl. VAT</div>
+            </div>
+          </div>
+          <Progress value={collected} max={due} tone="green" label={`Collected for ${monthLabel(period)}`} className="mt-6 !h-2.5" />
+        </div>
+      </section>
 
-      <Card>
+      <Card flush title={`${monthLabel(period)} rows`} description="Record what arrived by hand; Stripe payments mark themselves paid.">
         {rows.length ? (
-          <Table head={["Client", "Line", "Due", "Collected", "Status", "Record payment"]}>
+          <Table head={["Client", "Line", { label: "Due", align: "right" }, { label: "Collected", align: "right" }, "Status", "Record payment"]} minWidth={860}>
             {rows.map(({ p, client }) => {
               const s = paymentState(p);
               return (
-                <tr key={p.id} className="align-top">
-                  <td className="px-4 py-2.5">
-                    <Link href={`/clients/${client.id}`} className="font-medium hover:underline">
-                      {client.name}
+                <tr key={p.id} className="align-middle">
+                  <td className={td}>
+                    <Link href={`/clients/${client.id}`} className="group flex items-center gap-3">
+                      <ClientLogo name={client.name} size={34} className="rounded-lg" />
+                      <span className="min-w-0">
+                        <span className="block font-medium whitespace-nowrap text-white group-hover:text-brand-light">{client.name}</span>
+                        <span className="block text-xs text-muted capitalize">{p.method ?? client.billingMethod}</span>
+                      </span>
                     </Link>
-                    <div className="text-xs text-ink/50">{p.method ?? client.billingMethod}</div>
                   </td>
-                  <td className="px-4 py-2.5 text-ink/70">{p.label}</td>
-                  <td className="num px-4 py-2.5">{eur(p.amountDue)}</td>
-                  <td className="num px-4 py-2.5">
-                    {eur(p.amountCollected)}
-                    {p.paidDate && <div className="text-xs text-ink/50">{p.paidDate}</div>}
+                  <td className={`${td} text-soft`}>{p.label}</td>
+                  <td className={tdNum}>{eur(p.amountDue)}</td>
+                  <td className={tdNum}>
+                    <span className={p.amountCollected > 0 ? "text-white" : "text-muted"}>{eur(p.amountCollected)}</span>
+                    {p.paidDate && <div className="text-xs text-muted">{p.paidDate}</div>}
                   </td>
-                  <td className="px-4 py-2.5">
-                    <Badge tone={STATE_TONE[s]}>{s}</Badge>
-                    {p.notes && <div className="mt-1 max-w-56 text-xs whitespace-pre-line text-ink/50">{p.notes}</div>}
+                  <td className={td}>
+                    <Badge tone={STATE_TONE[s]} dot>
+                      {STATE_LABEL[s]}
+                    </Badge>
+                    {p.notes && <div className="mt-1 max-w-56 text-xs whitespace-pre-line text-muted">{p.notes}</div>}
                   </td>
-                  <td className="px-4 py-2.5">
-                    {s !== "paid" && (
+                  <td className={td}>
+                    {s !== "paid" ? (
                       <form action={recordPaymentAction} className="flex items-center gap-1.5">
                         <input type="hidden" name="paymentId" value={p.id} />
-                        <input name="amount" defaultValue={p.amountDue} className={`${field} num w-24`} aria-label="Total collected" />
-                        <select name="method" defaultValue={p.method ?? client.billingMethod} className={`${field} w-28`} aria-label="Method">
+                        <input name="amount" defaultValue={p.amountDue} className={`${field} num w-24 py-1.5`} aria-label={`Total collected from ${client.name}`} />
+                        <select name="method" defaultValue={p.method ?? client.billingMethod} className={`${field} w-28 py-1.5`} aria-label={`Method for ${client.name}`}>
                           {["stripe", "invoice", "revolut", "aib", "cash"].map((m) => (
                             <option key={m}>{m}</option>
                           ))}
                         </select>
-                        <SubmitButton className={btnGhost} pendingText="…">
-                          Paid
+                        <SubmitButton className={`${btnGhost} ${btnSm}`} pendingText="…">
+                          <Icon name="check" className="size-3.5" /> Paid
                         </SubmitButton>
                       </form>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 text-xs text-emerald-300">
+                        <Icon name="check" className="size-3.5" /> Settled
+                      </span>
                     )}
                   </td>
                 </tr>
@@ -132,19 +186,87 @@ export default async function PaymentsPage({ searchParams }: { searchParams: Pro
             })}
           </Table>
         ) : (
-          <Empty>No payment rows for {monthLabel(period)} yet. Click &ldquo;Generate&rdquo; to create one per active client from their retainer.</Empty>
+          <Empty
+            icon="euro"
+            title={`No rows for ${monthLabel(period)} yet`}
+            action={
+              <form action={generateMonthAction}>
+                <input type="hidden" name="month" value={month} />
+                <SubmitButton className={btn}>Generate {monthLabel(period).split(" ")[0]} rows</SubmitButton>
+              </form>
+            }
+          >
+            Creates one row per active client from their retainer.
+          </Empty>
         )}
       </Card>
 
-      <div id="reconcile" className="mt-6 scroll-mt-6">
+      <div id="aging" className="mt-6 grid scroll-mt-24 gap-6 lg:grid-cols-5">
+        <Card title="Overdue by age" description={`Days past due, across all months, as of ${rec.asOf}`} actions={<span className="num text-sm font-semibold text-white">{eur(rec.total)}</span>} className="lg:col-span-2">
+          <div className="flex h-3 overflow-hidden rounded-full bg-ink/[0.07]" role="img" aria-label={AGING_BUCKETS.map((b) => `${b.label}: ${eur(rec.totals[b.key])}`).join(", ")}>
+            {AGING_BUCKETS.map((b) => (rec.totals[b.key] > 0 ? <div key={b.key} className={BUCKET_COLOR[b.key]} style={{ width: `${(rec.totals[b.key] / agingMax) * 100}%` }} /> : null))}
+          </div>
+          <ul className="mt-5 grid grid-cols-2 gap-3">
+            {AGING_BUCKETS.map((b) => (
+              <li key={b.key} className="rounded-xl border border-line bg-canvas/50 p-3">
+                <div className="flex items-center gap-2 text-xs text-muted">
+                  <span className={`size-2 rounded-full ${BUCKET_COLOR[b.key]}`} aria-hidden />
+                  {b.label}
+                </div>
+                <div className={`num mt-1 text-lg font-semibold ${rec.totals[b.key] > 0 && BUCKET_TONE[b.key] ? "text-red-300" : "text-white"}`}>{eur(rec.totals[b.key])}</div>
+                <div className="text-[11px] text-muted">
+                  {rec.counts[b.key]} row{rec.counts[b.key] === 1 ? "" : "s"}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </Card>
+
+        <Card title="Balance by client" description="Who owes what, oldest debt first in colour" flush className="lg:col-span-3">
+          {rec.clients.length ? (
+            <ul className="divide-y divide-line/70">
+              {rec.clients.map((c) => (
+                <li key={c.clientId} className="flex items-center gap-3 px-5 py-3 transition-colors hover:bg-ink/[0.025]">
+                  <ClientLogo name={c.clientName} size={34} className="rounded-lg" />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <Link href={`/clients/${c.clientId}`} className="truncate font-medium text-white hover:text-brand-light">
+                        {c.clientName}
+                      </Link>
+                      <span className="num shrink-0 font-semibold text-white">{eur(c.balance)}</span>
+                    </div>
+                    <div className="mt-1.5 flex h-1.5 overflow-hidden rounded-full bg-ink/[0.07]" aria-hidden>
+                      {AGING_BUCKETS.map((b) => (c.buckets[b.key] > 0 ? <div key={b.key} className={BUCKET_COLOR[b.key]} style={{ width: `${(c.buckets[b.key] / c.balance) * 100}%` }} /> : null))}
+                    </div>
+                    <div className="mt-1 flex flex-wrap items-center gap-x-2 text-xs text-muted">
+                      <span>
+                        {c.rows} row{c.rows === 1 ? "" : "s"} · oldest <span className={c.oldestDays > 30 ? "text-red-300" : c.oldestDays > 14 ? "text-amber-300" : ""}>{c.oldestDays} days</span>
+                      </span>
+                      {c.chasersQueued.length ? <span>· {c.chasersQueued.map((s) => `${s}-day`).join(", ")} chaser queued</span> : c.chaserDue ? <span className="text-amber-300">· {c.chaserDue}-day chaser due</span> : null}
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <Empty icon="check" title="Nobody owes anything" compact>
+              Every row that&rsquo;s due has been paid.
+            </Empty>
+          )}
+        </Card>
+      </div>
+
+      <div id="reconcile" className="mt-6 scroll-mt-24">
         <Card
           title={`Unmatched payments${unmatched.length ? ` (${unmatched.length})` : ""}`}
-          actions={<span className="text-xs text-ink/50">Stripe payments that didn&rsquo;t match a client, and bank credits waiting for you to confirm</span>}
+          description="Stripe payments that didn’t match a client, and bank credits waiting for you to confirm"
         >
-          <form action={importBankCsvAction} className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-dashed border-line p-3">
+          <form action={importBankCsvAction} className="mb-5 flex flex-wrap items-center gap-3 rounded-xl border border-dashed border-line-strong bg-canvas/40 p-4">
             <input type="hidden" name="month" value={month} />
-            <span className="text-sm font-medium">Bank CSV</span>
-            <input type="file" name="file" accept=".csv,text/csv" required className="text-sm text-ink/70 file:mr-3 file:rounded-full file:border file:border-line file:bg-panel file:px-3 file:py-1.5 file:text-sm file:text-ink" />
+            <span className="flex items-center gap-2 text-sm font-medium whitespace-nowrap text-white">
+              <Icon name="upload" className="text-brand-light" /> Bank CSV
+            </span>
+            <input type="file" name="file" accept=".csv,text/csv" required aria-label="Bank CSV file" className="max-w-full text-sm text-soft file:mr-3 file:cursor-pointer file:rounded-full file:border file:border-line file:bg-panel file:px-3 file:py-1.5 file:text-sm file:text-ink" />
             <select name="format" defaultValue="" className={`${field} w-44`} aria-label="Bank format">
               <option value="">Detect format</option>
               {BANK_FORMATS.map((f) => (
@@ -156,7 +278,7 @@ export default async function PaymentsPage({ searchParams }: { searchParams: Pro
             <SubmitButton className={btn} pendingText="Reading…">
               Upload
             </SubmitButton>
-            <span className="text-xs text-ink/50">Only money in is read. Matches are suggested; nothing is recorded until you confirm.</span>
+            <span className="w-full text-xs text-muted">Only money in is read. Matches are suggested; nothing is recorded until you confirm.</span>
           </form>
 
           {unmatched.length ? (
@@ -167,22 +289,22 @@ export default async function PaymentsPage({ searchParams }: { searchParams: Pro
                 const others = open.filter((r) => !u.live.some((s) => s.paymentId === r.id));
                 return (
                   <tr key={u.id} className="align-top">
-                    <td className="px-4 py-2.5 whitespace-nowrap">
+                    <td className="px-4 py-3 first:pl-5 last:pr-5 whitespace-nowrap">
                       {u.receivedDate}
                       <div className="mt-1">
                         <Badge tone={u.source === "stripe" ? "brand" : "gray"}>{u.source === "stripe" ? "stripe" : (u.bankFormat ?? "bank")}</Badge>
                       </div>
                     </td>
-                    <td className="max-w-72 px-4 py-2.5">
+                    <td className="max-w-72 px-4 py-3">
                       <div className="font-medium">{u.payer ?? "Unknown payer"}</div>
-                      <div className="text-xs break-words text-ink/60">{[u.reference, u.description].filter(Boolean).join(" · ")}</div>
+                      <div className="text-xs break-words text-soft">{[u.reference, u.description].filter(Boolean).join(" · ")}</div>
                       {u.notes && <div className="mt-1 text-xs text-amber-300/80">{u.notes}</div>}
                     </td>
-                    <td className="num px-4 py-2.5 whitespace-nowrap">
+                    <td className="num px-4 py-3 whitespace-nowrap">
                       {eur(u.remaining)}
-                      {u.allocated > 0 && <div className="text-xs text-ink/50">of {eur(u.amount)}</div>}
+                      {u.allocated > 0 && <div className="text-xs text-muted">of {eur(u.amount)}</div>}
                     </td>
-                    <td className="px-4 py-2.5">
+                    <td className="px-4 py-3 first:pl-5 last:pr-5">
                       <form action={assignIncomingAction} className="flex flex-wrap items-center gap-1.5">
                         <input type="hidden" name="month" value={month} />
                         <input type="hidden" name="incomingId" value={u.id} />
@@ -211,25 +333,25 @@ export default async function PaymentsPage({ searchParams }: { searchParams: Pro
                           {suggested ? "Confirm" : "Assign"}
                         </SubmitButton>
                         {u.source === "stripe" && u.stripeCustomerId && (
-                          <label className="flex w-full items-center gap-1.5 text-xs text-ink/60">
+                          <label className="flex w-full items-center gap-1.5 text-xs text-soft">
                             <input type="checkbox" name="linkStripe" defaultChecked /> Save {u.stripeCustomerId} on the client
                           </label>
                         )}
                       </form>
                       {suggested ? (
-                        <p className="mt-1 text-xs text-ink/50">
+                        <p className="mt-1 text-xs text-muted">
                           Suggested: {suggested.row.clientName}, {monthLabel(suggested.row.period)}. {suggested.reasons.join(", ")}.
                         </p>
                       ) : (
-                        <p className="mt-1 text-xs text-ink/50">No confident match. Pick the row by hand.</p>
+                        <p className="mt-1 text-xs text-muted">No confident match. Pick the row by hand.</p>
                       )}
                     </td>
-                    <td className="px-4 py-2.5">
+                    <td className="px-4 py-3 first:pl-5 last:pr-5">
                       {u.allocated === 0 && (
                         <form action={ignoreIncomingAction}>
                           <input type="hidden" name="month" value={month} />
                           <input type="hidden" name="incomingId" value={u.id} />
-                          <SubmitButton className="text-xs text-ink/50 underline hover:text-ink" pendingText="…">
+                          <SubmitButton className="text-xs text-muted underline hover:text-ink" pendingText="…">
                             Not a client payment
                           </SubmitButton>
                         </form>
@@ -240,20 +362,22 @@ export default async function PaymentsPage({ searchParams }: { searchParams: Pro
               })}
             </Table>
           ) : (
-            <Empty>Nothing to match. Every Stripe payment found its client, and no bank credits are waiting.</Empty>
+            <Empty icon="check" title="Nothing to match" compact>
+              Every Stripe payment found its client, and no bank credits are waiting.
+            </Empty>
           )}
 
           {recent.length > 0 && (
             <div className="mt-4 border-t border-line pt-3">
-              <h3 className="mb-2 text-xs font-medium tracking-wide text-ink/50 uppercase">Recently reconciled</h3>
+              <h3 className="mb-2 text-xs font-medium tracking-wide text-muted uppercase">Recently reconciled</h3>
               <ul className="space-y-1 text-sm">
                 {recent.map(({ i, client }) => (
                   <li key={i.id} className="flex flex-wrap justify-between gap-2">
                     <span>
-                      {i.receivedDate} · {client ?? i.payer ?? "–"} · <span className="text-ink/50">{i.source === "stripe" ? "Stripe" : i.bankFormat}</span>
+                      {i.receivedDate} · {client ?? i.payer ?? "–"} · <span className="text-muted">{i.source === "stripe" ? "Stripe" : i.bankFormat}</span>
                     </span>
-                    <span className="num text-ink/70">
-                      {eur(i.amount)} <span className="text-xs text-ink/40">({i.matchedBy})</span>
+                    <span className="num text-soft">
+                      {eur(i.amount)} <span className="text-xs text-muted">({i.matchedBy})</span>
                     </span>
                   </li>
                 ))}
@@ -263,70 +387,14 @@ export default async function PaymentsPage({ searchParams }: { searchParams: Pro
         </Card>
       </div>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-2">
-        <Card title="Overdue by age" actions={<span className="num text-sm font-medium">{eur(rec.total)} owed</span>}>
-          <div className="grid grid-cols-2 gap-3">
-            {AGING_BUCKETS.map((b) => (
-              <Stat
-                key={b.key}
-                label={b.label}
-                value={eur(rec.totals[b.key])}
-                hint={`${rec.counts[b.key]} row${rec.counts[b.key] === 1 ? "" : "s"}`}
-                tone={rec.totals[b.key] > 0 ? BUCKET_TONE[b.key] : undefined}
-              />
-            ))}
-          </div>
-          <p className="mt-3 text-xs text-ink/50">Days past the due date, across all months, as of {rec.asOf}.</p>
-        </Card>
-
-        <Card title="Balance by client">
-          {rec.clients.length ? (
-            <div className="-mx-4 overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-line text-left text-xs tracking-wide text-ink/50 uppercase">
-                    <th className="px-4 py-2 font-medium">Client</th>
-                    <th className="px-4 py-2 font-medium">Balance</th>
-                    <th className="px-4 py-2 font-medium">Oldest</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-line/70">
-              {rec.clients.map((c) => (
-                <tr key={c.clientId}>
-                  <td className="px-4 py-2">
-                    <Link href={`/clients/${c.clientId}`} className="font-medium hover:underline">
-                      {c.clientName}
-                    </Link>
-                    <div className="text-xs text-ink/50">
-                      {c.rows} row{c.rows === 1 ? "" : "s"}
-                    </div>
-                  </td>
-                  <td className="num px-4 py-2">{eur(c.balance)}</td>
-                  <td className="px-4 py-2">
-                    <Badge tone={c.oldestDays > 30 ? "red" : c.oldestDays > 14 ? "yellow" : "gray"}>{c.oldestDays} days</Badge>
-                    <div className="mt-1 text-xs text-ink/50">
-                      {c.chasersQueued.length ? `${c.chasersQueued.map((s) => `${s}-day`).join(", ")} chaser queued` : c.chaserDue ? `${c.chaserDue}-day chaser due` : ""}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <Empty>Nobody owes anything that&rsquo;s due.</Empty>
-          )}
-        </Card>
-      </div>
-
-      <div id="cash-summary" className="mt-6 scroll-mt-6">
+      <div id="cash-summary" className="mt-6 scroll-mt-24">
         <Card
           title="Cash summary"
           actions={
             <form action={saveCashSummaryAction} className="flex items-center gap-2">
               <input type="hidden" name="month" value={month} />
               {summary && (
-                <span className="text-xs text-ink/50">
+                <span className="text-xs text-muted">
                   {summary.createdAt.toLocaleString("en-IE", { timeZone: "Europe/Dublin", dateStyle: "medium", timeStyle: "short" })}
                   {summary.postedToSlack ? " · posted to Slack" : ""}
                 </span>
@@ -338,15 +406,17 @@ export default async function PaymentsPage({ searchParams }: { searchParams: Pro
           }
         >
           {summary ? (
-            <pre className="font-sans text-sm whitespace-pre-wrap text-ink/80">{summary.body}</pre>
+            <pre className="font-sans text-sm leading-relaxed whitespace-pre-wrap text-soft">{summary.body}</pre>
           ) : (
-            <Empty>The finance agent saves a cash summary every Friday. Build one now to see it here.</Empty>
+            <Empty icon="doc" title="No cash summary yet" compact>
+              The finance agent saves one every Friday. Build one now to see it here.
+            </Empty>
           )}
         </Card>
       </div>
 
-      <Card title="Add a one-off charge" className="mt-6">
-        <form action={addPaymentAction} className="grid gap-3 sm:grid-cols-5">
+      <Card title="Add a one-off charge" description={`Added to ${monthLabel(period)}`} className="mt-6">
+        <form action={addPaymentAction} className="grid gap-3 sm:grid-cols-[1fr_2fr_1fr_auto] sm:items-end">
           <input type="hidden" name="month" value={month} />
           <select name="clientId" required className={input} aria-label="Client">
             {clients.map((c) => (
@@ -355,9 +425,9 @@ export default async function PaymentsPage({ searchParams }: { searchParams: Pro
               </option>
             ))}
           </select>
-          <input name="label" placeholder="What for, e.g. Website build" required className={`${input} sm:col-span-2`} />
-          <input name="amountDue" placeholder="Amount incl. VAT" required className={`${input} num`} />
-          <SubmitButton className={btn}>Add</SubmitButton>
+          <input name="label" placeholder="What for, e.g. Website build" required className={input} aria-label="What for" />
+          <input name="amountDue" placeholder="Amount incl. VAT" required inputMode="decimal" className={`${input} num`} aria-label="Amount incl. VAT" />
+          <SubmitButton className={btn}>Add charge</SubmitButton>
         </form>
       </Card>
     </>
