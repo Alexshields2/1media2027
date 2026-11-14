@@ -14,7 +14,7 @@ import { audit } from "@/lib/audit";
 import { can, canDecide, canRunAgent, ForbiddenError } from "@/lib/roles";
 import { passwordProblem } from "@/lib/password";
 import { looksLikeEmail, normalizeEmail } from "@/lib/auth-rules";
-import { generateMonth, recordPayment } from "@/lib/billing";
+import { generateMonth, recordPayment, trackingStart } from "@/lib/billing";
 import { executeApproval, rejectApproval } from "@/lib/approvals";
 import { createRun, executeRun, runAgent, modelReady } from "@/lib/runner";
 import { AGENTS } from "@/agents/registry";
@@ -154,6 +154,11 @@ export async function updateClient(id: number, form: FormData) {
 export async function generateMonthAction(form: FormData) {
   const user = await requirePermission("payments", "change payments");
   const month = str(form, "month") ?? today().slice(0, 7);
+  if (!/^\d{4}-\d{2}$/.test(month)) throw new Error("Bad month");
+  const start = await trackingStart();
+  if (`${month}-01` < start) {
+    redirect(`/payments?view=month&month=${month}&error=${encodeURIComponent(`Payments are tracked from ${start.slice(0, 7)}. Rows aren't generated for earlier months.`)}`);
+  }
   const created = await generateMonth(`${month}-01`);
   await audit("payment.generate_month", { userId: user.id, target: `month:${month}`, detail: { created } });
   revalidatePath("/payments");

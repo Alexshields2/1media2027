@@ -79,6 +79,22 @@ describe("payment log (database)", { skip: skipReason }, () => {
     await assert.rejects(m.editPayment(oct.id, { amountCollected: -1, paidDate: null, method: null, notes: null }, ownerId), /negative/);
   });
 
+  test("generating rows: preview counts what would be created; stray old rows don't move the tracking start", async () => {
+    const { previewMonth, trackingStart, generateMonth } = await import("../src/lib/billing");
+    // The seed's first paid month is October 2026.
+    assert.equal(await trackingStart(), "2026-10-01");
+    const before = await previewMonth("2026-03-01");
+    assert.deepEqual(before, { count: 6, total: 8278.5 });
+    // Someone generates an old month anyway: unpaid, never imported, so it doesn't count as payment data.
+    assert.equal(await generateMonth("2026-03-01"), 6);
+    assert.equal(await trackingStart(), "2026-10-01");
+    assert.deepEqual(await previewMonth("2026-03-01"), { count: 0, total: 0 });
+    const log = await m.loadPaymentLog(2026, "2026-11-14");
+    assert.equal(log.months[0], "2026-10-01", "the grid starts at the first month with payment data");
+    assert.ok(!log.lines.some((l) => l.cells["2026-03-01"]));
+    assert.deepEqual(log.years, [2026]);
+  });
+
   test("the log for a year: months, lines and totals from the database", async () => {
     const log = await m.loadPaymentLog(2026, "2026-11-14");
     assert.deepEqual(log.months.slice(-3), ["2026-10-01", "2026-11-01", "2026-12-01"], "December shows: a row exists ahead");

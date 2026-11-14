@@ -1,7 +1,7 @@
 import { and, asc, eq, gte, inArray, lte, sql as dsql } from "drizzle-orm";
 import { db, schema } from "../db";
 import { audit } from "./audit";
-import { amountDue, round2 } from "./billing";
+import { amountDue, round2, trackingStart } from "./billing";
 import { today as todayIso } from "./dates";
 import { releaseAllocations } from "./reconcile";
 import { buildPaymentLog, cellState, tickedValues, untickedValues, METHODS, type LogClient, type LogRow, type Method, type PaymentLogData } from "./payment-log-core";
@@ -24,7 +24,7 @@ const rowFields = {
 
 /** Everything the log grid needs for one year. */
 export async function loadPaymentLog(year: number, on = todayIso()): Promise<PaymentLogData> {
-  const [clients, rows, [span]] = await Promise.all([
+  const [clients, rows, [span], from] = await Promise.all([
     db
       .select({ id: schema.clients.id, name: schema.clients.name, status: schema.clients.status, billingMethod: schema.clients.billingMethod, retainerExVat: schema.clients.retainerExVat })
       .from(schema.clients)
@@ -34,13 +34,15 @@ export async function loadPaymentLog(year: number, on = todayIso()): Promise<Pay
       .from(schema.payments)
       .where(and(gte(schema.payments.period, `${year}-01-01`), lte(schema.payments.period, `${year}-12-01`)))
       .orderBy(asc(schema.payments.period), asc(schema.payments.id)),
-    db.select({ min: dsql<string | null>`min(${schema.payments.period})::text`, max: dsql<string | null>`max(${schema.payments.period})::text` }).from(schema.payments),
+    db.select({ max: dsql<string | null>`max(${schema.payments.period})::text` }).from(schema.payments),
+    trackingStart(),
   ]);
   const thisYear = Number(on.slice(0, 4));
-  const first = Math.min(span?.min ? Number(span.min.slice(0, 4)) : thisYear, thisYear, year);
+  // Years from the first month with real payment data, never earlier (rows generated for older months by mistake don't count).
+  const first = Math.min(Number(from.slice(0, 4)), thisYear);
   const last = Math.max(span?.max ? Number(span.max.slice(0, 4)) : thisYear, thisYear, year);
   const years = Array.from({ length: last - first + 1 }, (_, i) => first + i);
-  return buildPaymentLog(clients as LogClient[], rows as LogRow[], year, on, years);
+  return buildPaymentLog(clients as LogClient[], rows as LogRow[], year, on, years, from);
 }
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];

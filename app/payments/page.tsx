@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { asc, desc, eq } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { paymentState, round2 } from "@/lib/billing";
+import { paymentState, previewMonth, round2, trackingStart } from "@/lib/billing";
 import { addMonths, eur, monthLabel, monthStart, today } from "@/lib/dates";
 import { AGING_BUCKETS, SUGGEST_AT } from "@/lib/matching";
 import { latestCashSummary, receivables } from "@/lib/finance";
@@ -20,7 +20,7 @@ import { can } from "@/lib/roles";
 import { Badge, Card, Empty, NoAccess, Notice, PageHeader, Progress, Segmented, Table, btn, btnGhost, btnLink, btnSm, field, input, td, tdNum } from "../_components/ui";
 import { ClientLogo } from "../_components/client-logo";
 import { Icon } from "../_components/icons";
-import { SubmitButton } from "../_components/client-bits";
+import { ConfirmSubmitButton, SubmitButton } from "../_components/client-bits";
 import { requireUser } from "@/lib/session";
 import { assignTargets, bankCreditsWaiting, loadPaymentLog } from "@/lib/payment-log";
 import { PaymentLog, StripeToAssign, type ToAssign } from "./payment-log";
@@ -105,7 +105,7 @@ async function LogView({ sp, mode }: { sp: Search; mode: "grid" | "list" }) {
         )}
       </div>
       <StripeToAssign items={stripe} clients={targets} />
-      <PaymentLog mode={mode} year={year} years={log.years} today={on} clients={clients} rows={rows} />
+      <PaymentLog mode={mode} year={year} years={log.years} today={on} from={log.from ?? `${year}-01-01`} clients={clients} rows={rows} />
     </>
   );
 }
@@ -113,7 +113,7 @@ async function LogView({ sp, mode }: { sp: Search; mode: "grid" | "list" }) {
 async function MonthView({ sp }: { sp: Search }) {
   const period = monthStart(/^\d{4}-\d{2}$/.test(sp.month ?? "") ? `${sp.month}-01` : today());
   const month = period.slice(0, 7);
-  const [rows, clients, unmatched, open, rec, summary, recent] = await Promise.all([
+  const [rows, clients, unmatched, open, rec, summary, recent, start, preview] = await Promise.all([
     db
       .select({ p: schema.payments, client: schema.clients })
       .from(schema.payments)
@@ -132,7 +132,13 @@ async function MonthView({ sp }: { sp: Search }) {
       .where(eq(schema.incomingPayments.status, "matched"))
       .orderBy(desc(schema.incomingPayments.decidedAt))
       .limit(6),
+    trackingStart(),
+    previewMonth(period),
   ]);
+  // No generating rows before payment tracking started (Jan 2026, or the first month with real payments),
+  // and always say how many rows and how much before creating them.
+  const canGenerate = period >= start && preview.count > 0;
+  const generateConfirm = `Create ${preview.count} unpaid retainer row${preview.count === 1 ? "" : "s"} for ${monthLabel(period)}, totalling ${eur(preview.total)}?`;
   const due = round2(rows.reduce((s, r) => s + r.p.amountDue, 0));
   const collected = round2(rows.reduce((s, r) => s + r.p.amountCollected, 0));
   const rowLabel = (r: (typeof open)[number]) => `${r.clientName} · ${shortMonth(r.period)}${r.label && r.label !== "Retainer" ? ` ${r.label}` : ""} · ${eur(round2(r.amountDue - r.amountCollected))}`;
@@ -152,12 +158,14 @@ async function MonthView({ sp }: { sp: Search }) {
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <ViewSwitch view="month" year={Number(month.slice(0, 4))} month={month} />
-            <form action={generateMonthAction}>
-              <input type="hidden" name="month" value={month} />
-              <SubmitButton className={btnGhost}>
-                <Icon name="plus" /> Generate {monthLabel(period).split(" ")[0]} rows
-              </SubmitButton>
-            </form>
+            {canGenerate && (
+              <form action={generateMonthAction}>
+                <input type="hidden" name="month" value={month} />
+                <ConfirmSubmitButton className={btnGhost} confirm={generateConfirm}>
+                  <Icon name="plus" /> Generate {monthLabel(period).split(" ")[0]} rows
+                </ConfirmSubmitButton>
+              </form>
+            )}
           </div>
         }
       />
@@ -268,13 +276,17 @@ async function MonthView({ sp }: { sp: Search }) {
             icon="euro"
             title={`No rows for ${monthLabel(period)} yet`}
             action={
-              <form action={generateMonthAction}>
-                <input type="hidden" name="month" value={month} />
-                <SubmitButton className={btn}>Generate {monthLabel(period).split(" ")[0]} rows</SubmitButton>
-              </form>
+              canGenerate ? (
+                <form action={generateMonthAction}>
+                  <input type="hidden" name="month" value={month} />
+                  <ConfirmSubmitButton className={btn} confirm={generateConfirm}>
+                    Generate {monthLabel(period).split(" ")[0]} rows
+                  </ConfirmSubmitButton>
+                </form>
+              ) : undefined
             }
           >
-            Creates one row per active client from their retainer.
+            {period < start ? `Payments are tracked from ${monthLabel(start)}.` : canGenerate ? "Creates one row per active client from their retainer." : "No active client has a retainer to bill."}
           </Empty>
         )}
       </Card>

@@ -52,13 +52,15 @@ export interface LogProps {
   year: number;
   years: number[];
   today: string;
+  /** First month with real payment data; the grid never starts earlier. */
+  from: string;
   clients: LogClient[];
   rows: LogRow[];
 }
 
-export function PaymentLog({ mode, year, years, today, clients, rows: serverRows }: LogProps) {
+export function PaymentLog({ mode, year, years, today, from, clients, rows: serverRows }: LogProps) {
   const { rows, error, setError, run } = useLog(serverRows);
-  const data = useMemo(() => buildPaymentLog(clients, rows, year, today, years), [clients, rows, year, today, years]);
+  const data = useMemo(() => buildPaymentLog(clients, rows, year, today, years, from), [clients, rows, year, today, years, from]);
   const clientOf = useMemo(() => new Map(clients.map((c) => [c.id, c])), [clients]);
   const [editing, setEditing] = useState<LogRow | null>(null);
   const [hover, setHover] = useState<{ row: LogRow; x: number; y: number } | null>(null);

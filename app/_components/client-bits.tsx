@@ -14,6 +14,16 @@ export function SubmitButton({ children, className, pendingText = "Working…" }
   );
 }
 
+/** A submit button that asks first (window.confirm) and only submits on OK. */
+export function ConfirmSubmitButton({ children, className, confirm, pendingText = "Working…" }: { children: React.ReactNode; className: string; confirm: string; pendingText?: string }) {
+  const { pending } = useFormStatus();
+  return (
+    <button type="submit" disabled={pending} className={className} onClick={(e) => !window.confirm(confirm) && e.preventDefault()}>
+      {pending ? pendingText : children}
+    </button>
+  );
+}
+
 export function CopyButton({ text, className }: { text: string; className: string }) {
   const [copied, setCopied] = useState(false);
   return (

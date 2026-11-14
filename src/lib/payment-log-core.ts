@@ -75,6 +75,8 @@ export interface PaymentLogData {
   year: number;
   years: number[];
   today: string;
+  /** First month shown: where real payment data starts. */
+  from?: string;
   months: string[];
   lines: LogLine[];
   columns: LogColumn[];
@@ -83,17 +85,20 @@ export interface PaymentLogData {
 
 const isActive = (c: Pick<LogClient, "status">) => c.status === "active" || c.status === "onboarding";
 
-/** The months a year's grid shows: Jan to the current month this year (or later, if a row exists ahead), all 12 for past years. */
-export function logMonths(year: number, today: string, rows: Pick<LogRow, "period">[]): string[] {
+/**
+ * The months a year's grid shows: Jan to the current month this year (or later, if a row exists ahead), all 12 for
+ * past years, never before `from` (the first month with real payment data).
+ */
+export function logMonths(year: number, today: string, rows: Pick<LogRow, "period">[], from?: string): string[] {
   const thisYear = Number(today.slice(0, 4));
   const latestRow = rows.filter((r) => r.period.startsWith(`${year}-`)).reduce((m, r) => Math.max(m, Number(r.period.slice(5, 7))), 0);
   const last = year < thisYear ? 12 : year === thisYear ? Math.max(Number(today.slice(5, 7)), latestRow) : latestRow;
-  return Array.from({ length: last }, (_, i) => `${year}-${String(i + 1).padStart(2, "0")}-01`);
+  return Array.from({ length: last }, (_, i) => `${year}-${String(i + 1).padStart(2, "0")}-01`).filter((m) => !from || m >= from);
 }
 
-export function buildPaymentLog(clients: LogClient[], allRows: LogRow[], year: number, today: string, years?: number[]): PaymentLogData {
-  const rows = allRows.filter((r) => r.period.startsWith(`${year}-`));
-  const months = logMonths(year, today, rows);
+export function buildPaymentLog(clients: LogClient[], allRows: LogRow[], year: number, today: string, years?: number[], from?: string): PaymentLogData {
+  const rows = allRows.filter((r) => r.period.startsWith(`${year}-`) && (!from || r.period >= from));
+  const months = logMonths(year, today, rows, from);
   const inGrid = new Set(months);
   const byClient = new Map<number, LogRow[]>();
   for (const r of rows) byClient.set(r.clientId, [...(byClient.get(r.clientId) ?? []), r]);
@@ -135,7 +140,7 @@ export function buildPaymentLog(clients: LogClient[], allRows: LogRow[], year: n
     outstanding: r2(owedNow.reduce((s, r) => s + (r.amountDue - r.amountCollected), 0)),
     unpaidMonths: owedNow.length,
   };
-  return { year, years: years ?? [year], today, months, lines, columns, summary };
+  return { year, years: years ?? [year], today, from, months, lines, columns, summary };
 }
 
 /** Month groups for the "By month" list, newest first. */
