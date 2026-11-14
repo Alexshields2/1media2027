@@ -15,7 +15,8 @@ export type Permission =
   | "run_finance_agent"
   | "manage_users" // add people, reset passwords, change roles
   | "view_audit"
-  | "manage_agents"; // create and edit chat agents (instructions, tools, autonomy)
+  | "manage_agents" // create and edit chat agents (instructions, tools, autonomy)
+  | "manage_integrations"; // connect and disconnect apps (Gmail, Stripe, Slack…) in Composio
 
 const TEAM: ReadonlySet<Permission> = new Set<Permission>([]);
 

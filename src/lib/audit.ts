@@ -13,6 +13,8 @@ export type AuditAction =
   | "client.create"
   | "client.update"
   | "agent.ask"
+  | "integration.connect"
+  | "integration.disconnect"
   | "agent.create"
   | "agent.update"
   | "agent.reset"

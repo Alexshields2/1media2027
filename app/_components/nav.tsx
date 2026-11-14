@@ -34,7 +34,10 @@ const GROUPS: { title?: string; links: L[] }[] = [
     ],
   },
   {
-    links: [{ href: "/settings", label: "Settings", icon: "gear" }],
+    links: [
+      { href: "/integrations", label: "Integrations", icon: "plug", ownerOnly: true },
+      { href: "/settings", label: "Settings", icon: "gear" },
+    ],
   },
 ];
 
